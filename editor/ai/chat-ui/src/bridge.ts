@@ -199,11 +199,19 @@ export function getAgentId(): string {
 // ─── JS → C++ ────────────────────────────────────────────────────
 
 export function sendToNative(action: string, params: Record<string, string> = {}) {
+  // macOS: WKWebView message handler
   if ((window as any).webkit?.messageHandlers?.fogot) {
     ;(window as any).webkit.messageHandlers.fogot.postMessage({ action, ...params })
     return
   }
 
+  // Windows: WebView2 postMessage (JSON string → C++ WebMessageReceived)
+  if ((window as any).chrome?.webview) {
+    ;(window as any).chrome.webview.postMessage(JSON.stringify({ action, ...params }))
+    return
+  }
+
+  // Fallback: fogot:// URL scheme via hidden iframe
   const query = new URLSearchParams(params).toString()
   const iframe = document.createElement('iframe')
   iframe.style.display = 'none'

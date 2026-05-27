@@ -1,76 +1,142 @@
-# Godot Engine
+# Fogot Engine
 
 <p align="center">
   <a href="https://godotengine.org">
-    <img src="misc/logo/logo_outlined.svg" width="400" alt="Godot Engine logo">
+    <img src="misc/logo/logo_outlined.svg" width="400" alt="Fogot Engine logo">
   </a>
 </p>
 
-## 2D and 3D cross-platform game engine
+## AI-Powered 2D Game Editor
 
-**[Godot Engine](https://godotengine.org) is a feature-packed, cross-platform
-game engine to create 2D and 3D games from a unified interface.** It provides a
-comprehensive set of [common tools](https://godotengine.org/features), so that
-users can focus on making games without having to reinvent the wheel. Games can
-be exported with one click to a number of platforms, including the major desktop
-platforms (Linux, macOS, Windows), mobile platforms (Android, iOS), as well as
-Web-based platforms and [consoles](https://godotengine.org/consoles).
+**Fogot Engine** 是基于 [Godot Engine 4.7](https://godotengine.org) 的 fork，在编辑器中集成了 AI 助手面板，采用 **C++ WebView + React** 的混合架构，为 2D 游戏开发提供智能辅助能力（GDScript 编写、精灵处理、动画生成等）。
 
-## Free, open source and community-driven
+## 架构概览
 
-Godot is completely free and open source under the very permissive [MIT license](https://godotengine.org/license).
-No strings attached, no royalties, nothing. The users' games are theirs, down
-to the last line of engine code. Godot's development is fully independent and
-community-driven, empowering users to help shape their engine to match their
-expectations. It is supported by the [Godot Foundation](https://godot.foundation/)
-not-for-profit.
+```
+┌─────────────────────────────────────────────────────────┐
+│  Godot Editor (C++)                                     │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ AIChatDock (EditorDock)                            │  │
+│  │  └─ EditorWebView (原生 WebView 控件)              │  │
+│  └───────────────────────────────────────────────────┘  │
+│         ↕ fogot:// scheme / messageHandlers             │
+│  ┌───────────────────────────────────────────────────┐  │
+│  │ React App (fogot-chat-ui)                          │  │
+│  │  - Vercel AI SDK + assistant-ui                    │  │
+│  │  - LLM 流式对话、多 Agent 编排                      │  │
+│  │  - Tool RPC → C++ 文件/命令操作                     │  │
+│  └───────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────┘
+```
 
-Before being open sourced in [February 2014](https://github.com/godotengine/godot/commit/0b806ee0fc9097fa7bda7ac0109191c9c5e0a1ac),
-Godot had been developed by [Juan Linietsky](https://github.com/reduz) and
-[Ariel Manzur](https://github.com/punto-) for several years as an in-house
-engine, used to publish several work-for-hire titles.
+### 分层设计
 
-![Screenshot of a 3D scene in the Godot Engine editor](https://raw.githubusercontent.com/godotengine/godot-design/master/screenshots/editor_tps_demo_1920x1080.jpg)
+| 层级 | 职责 | 技术 |
+|------|------|------|
+| **C++ 宿主层** | WebView 托管、Tool RPC 分发、编辑器动作 | Godot EditorDock, WKWebView / WebView2 |
+| **桥接层** | JS↔C++ 双向通信协议 | `fogot://` scheme, `postMessage` |
+| **前端智能层** | LLM 对话、Agent 逻辑、UI 渲染 | React, Vercel AI SDK, assistant-ui |
 
-## Getting the engine
+## 技术栈
 
-### Binary downloads
+| 组件 | 技术 |
+|------|------|
+| 引擎基座 | Godot 4.7 beta, C++, SCons |
+| AI 前端 | React 18, TypeScript, Vite 6 |
+| AI SDK | Vercel AI SDK 6, `@ai-sdk/openai-compatible` |
+| 聊天 UI | `@assistant-ui/react`, shadcn/ui |
+| 样式 | Tailwind CSS 4 |
+| WebView | macOS: WKWebView / Windows: WebView2 (Edge Chromium) |
 
-Official binaries for the Godot editor and the export templates can be found
-[on the Godot website](https://godotengine.org/download).
+## 项目结构
 
-### Compiling from source
+```
+editor/ai/
+├── docks/              # AIChatDock — WebView 宿主与 JS↔C++ 桥接
+├── tools/              # C++ Tool RPC 实现（文件读写、搜索、命令执行等）
+├── web/                # EditorWebView 平台抽象层
+│   ├── editor_web_view_macos.mm      # macOS WKWebView 实现
+│   └── editor_web_view_windows.cpp   # Windows WebView2 实现
+└── chat-ui/            # React 前端应用
+    └── src/
+        ├── ai/         # Agent 定义与工具声明
+        ├── components/ # UI 组件（shadcn + 自定义）
+        ├── lib/        # 工具函数与线程存储
+        ├── bridge.ts   # C++↔JS 桥接协议
+        └── App.tsx     # 应用入口
+```
 
-[See the official docs](https://docs.godotengine.org/en/latest/engine_details/development/compiling)
-for compilation instructions for every supported platform.
+### C++ Tool RPC
 
-## Community and contributing
+AI 可通过 RPC 调用以下工具操作项目文件：
 
-Godot is not only an engine but an ever-growing community of users and engine
-developers. The main community channels are listed [on the homepage](https://godotengine.org/community).
+| 工具 | 功能 |
+|------|------|
+| `read_file` | 读取项目文件 |
+| `write_file` | 写入文件 |
+| `edit_file` | 字符串替换式编辑 |
+| `list_files` | 列出目录内容 |
+| `delete_file` | 删除文件 |
+| `copy_file` / `move_file` | 复制 / 移动文件 |
+| `search_files` | 文本搜索 |
+| `execute_command` | 执行 shell 命令 |
 
-The best way to get in touch with the core engine developers is to join the
-[Godot Contributors Chat](https://chat.godotengine.org).
+## 构建
 
-To get started contributing to the project, see the [contributing guide](CONTRIBUTING.md).
-This document also includes guidelines for reporting bugs.
+### 1. 安装依赖
 
-## Documentation and demos
+```bash
+pip install scons
 
-The official documentation is hosted on [Read the Docs](https://docs.godotengine.org).
-It is maintained by the Godot community in its own [GitHub repository](https://github.com/godotengine/godot-docs).
+# Windows 额外依赖
+python misc/scripts/install_d3d12_sdk_windows.py
+python misc/scripts/install_accesskit.py
+python misc/scripts/install_webview2_sdk.py
+```
 
-The [class reference](https://docs.godotengine.org/en/latest/classes/)
-is also accessible from the Godot editor.
+Windows 需要 [Visual Studio Build Tools 2022](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022)（C++ 桌面开发工作负载 + Windows SDK）。
 
-We also maintain official demos in their own [GitHub repository](https://github.com/godotengine/godot-demo-projects)
-as well as a list of [awesome Godot community resources](https://github.com/godotengine/awesome-godot).
+### 2. 编译引擎
 
-There are also a number of other
-[learning resources](https://docs.godotengine.org/en/latest/community/tutorials.html)
-provided by the community, such as text and video tutorials, demos, etc.
-Consult the [community channels](https://godotengine.org/community)
-for more information.
+```bash
+# 需要 Python 3.9+、SCons 4.4+、平台对应工具链
+scons platform=<platform> target=editor
+```
 
-[![Code Triagers Badge](https://www.codetriage.com/godotengine/godot/badges/users.svg)](https://www.codetriage.com/godotengine/godot)
-[![Translate on Weblate](https://hosted.weblate.org/widgets/godot-engine/-/godot/svg-badge.svg)](https://hosted.weblate.org/engage/godot-engine/?utm_source=widget)
+### 3. 构建 AI Chat UI
+
+```bash
+cd editor/ai/chat-ui
+npm install
+npm run build:fast    # 产出单文件 dist/index.html
+```
+
+### 4. 开发模式（热重载）
+
+```bash
+# 终端 1：启动 Vite 开发服务器
+cd editor/ai/chat-ui && npm run dev
+
+# 终端 2：设置环境变量后启动编辑器
+# macOS / Linux
+FOGOT_AI_DEV=1 ./bin/godot.macos.editor.arm64
+
+# Windows (PowerShell)
+$env:FOGOT_AI_DEV=1; .\bin\godot.windows.editor.x86_64.console.exe
+```
+
+开发模式下 WebView 加载 `http://127.0.0.1:5173`，支持热重载。
+
+## 平台支持
+
+| 平台 | WebView 状态 |
+|------|--------------|
+| macOS | ✅ 已实现 (WKWebView) |
+| Windows | ✅ 已实现 (WebView2 / Edge Chromium) |
+| Linux | 🚧 计划中 (WebKitGTK) |
+
+## 基于 Godot Engine
+
+本项目基于 [Godot Engine](https://godotengine.org) 开发，Godot 是一个功能完善的跨平台游戏引擎，采用 [MIT 许可证](https://godotengine.org/license) 开源。
+
+编译说明与平台支持详见 [Godot 官方文档](https://docs.godotengine.org/en/latest/engine_details/development/compiling)。

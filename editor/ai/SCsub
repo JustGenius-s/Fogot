@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 from misc.utility.scons_hints import *
 
+import os
+
 Import("env")
 
 env.add_source_files(env.editor_sources, "docks/*.cpp")
@@ -13,3 +15,25 @@ env.add_source_files(env.editor_sources, "web/*.cpp")
 if env["platform"] == "macos":
     env.add_source_files(env.editor_sources, "web/*.mm")
     env.Append(LINKFLAGS=["-framework", "WebKit"])
+
+# Windows: WebView2 SDK (headers + static loader lib).
+if env["platform"] == "windows":
+    deps_folder = os.environ.get("LOCALAPPDATA", "")
+    if deps_folder:
+        webview2_dir = os.path.join(deps_folder, "Godot", "build_deps", "webview2")
+    else:
+        webview2_dir = os.path.join("bin", "build_deps", "webview2")
+
+    webview2_include = os.path.join(webview2_dir, "build", "native", "include")
+
+    if env["arch"] == "arm64":
+        webview2_lib = os.path.join(webview2_dir, "build", "native", "arm64", "WebView2LoaderStatic.lib")
+    else:
+        webview2_lib = os.path.join(webview2_dir, "build", "native", "x64", "WebView2LoaderStatic.lib")
+
+    if os.path.isdir(webview2_include):
+        env.Prepend(CPPPATH=[webview2_include])
+        env.Append(LINKFLAGS=[webview2_lib])
+    else:
+        print("WARNING: WebView2 SDK not found. AI Chat WebView will not be available.")
+        print("  Install it by running: python misc/scripts/install_webview2_sdk.py")

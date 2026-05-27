@@ -21,9 +21,11 @@ void EditorWebView::_dispatch_js_message(const String &p_action, const Dictionar
 
 EditorWebView *EditorWebView::create_platform_view() {
 #ifdef MACOS_ENABLED
-	// Defined in editor_web_view_macos.mm
 	extern EditorWebView *_create_macos_web_view();
 	return _create_macos_web_view();
+#elif defined(WINDOWS_ENABLED)
+	extern EditorWebView *_create_windows_web_view();
+	return _create_windows_web_view();
 #else
 	ERR_PRINT("EditorWebView: No platform implementation available.");
 	return nullptr;
