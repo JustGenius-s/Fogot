@@ -1,0 +1,15 @@
+#!/usr/bin/env python
+from misc.utility.scons_hints import *
+
+Import("env")
+
+env.add_source_files(env.editor_sources, "docks/*.cpp")
+env.add_source_files(env.editor_sources, "tools/*.cpp")
+
+# WebView support.
+env.add_source_files(env.editor_sources, "web/*.cpp")
+
+# macOS: compile Objective-C++ WebView implementation and link WebKit.
+if env["platform"] == "macos":
+    env.add_source_files(env.editor_sources, "web/*.mm")
+    env.Append(LINKFLAGS=["-framework", "WebKit"])

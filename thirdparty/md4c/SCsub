@@ -1,0 +1,11 @@
+#!/usr/bin/env python
+
+Import("env")
+
+thirdparty_sources = ["md4c.c"]
+
+env_md4c = env.Clone()
+env_md4c.disable_warnings()
+
+env_md4c.Prepend(CPPPATH=["."])
+env_md4c.add_source_files(env.editor_sources, thirdparty_sources)
