@@ -47,6 +47,12 @@ class AIChatDock : public EditorDock {
 	// ─── Tool RPC ───────────────────────────────────────────────
 	void _handle_call_tool(const String &p_request_id, const String &p_tool_name, const String &p_args_json);
 
+	// ─── Debugger error forwarding ──────────────────────────────
+	Vector<String> pending_debugger_errors;
+	bool flush_scheduled = false;
+	void _on_debugger_error(const String &p_json);
+	void _flush_debugger_errors();
+
 protected:
 	void _notification(int p_what);
 	static void _bind_methods();

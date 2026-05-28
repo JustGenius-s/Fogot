@@ -11,14 +11,15 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Thread } from '@/components/assistant-ui/thread'
 import { ModelSettings } from '@/components/assistant-ui/model-settings'
-import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getAttachments, clearAttachments } from '@/bridge'
+import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getAttachments, clearAttachments, setActivePlan } from '@/bridge'
 import { allTools, getToolsForAgent } from '@/ai/tools'
-import { defaultSystemPrompt, getAgent } from '@/ai/agents'
+import { defaultSystemPrompt, planSystemPrompt, getAgent } from '@/ai/agents'
 import { configureDelegateTool } from '@/ai/delegate-tool'
 import { DEFAULT_MODE_ID } from '@/components/assistant-ui/mode-selector'
 import { threadListAdapter } from '@/lib/thread-storage'
 import { WriteFileToolUI } from '@/components/custom/write-file-tool-ui'
 import { DelegateTaskToolUI } from '@/components/custom/delegate-task-tool-ui'
+import { ExitPlanModeToolUI } from '@/components/custom/create-plan-tool-ui'
 
 // ─── Attachment-aware Transport Wrapper ───────────────────────────
 
@@ -205,6 +206,7 @@ const ChatProvider: FC<{
     <AssistantRuntimeProvider runtime={runtime}>
       <WriteFileToolUI />
       <DelegateTaskToolUI />
+      <ExitPlanModeToolUI />
       <TooltipProvider>
         <div className="flex flex-col h-full">
           <div className="flex-1 min-h-0">
@@ -240,20 +242,34 @@ export default function App() {
     configureDelegateTool(model, getToolsForAgent)
 
     const agentConfig = (agentId && agentId !== DEFAULT_MODE_ID) ? getAgent(agentId) : undefined
-    const tools = agentConfig?.allowedTools
-      ? getToolsForAgent(agentConfig.allowedTools)
-      : allTools
-    const instructions = agentConfig?.systemPrompt ?? defaultSystemPrompt
-    const maxSteps = agentConfig?.maxSteps ?? 25
+
+    let tools: ReturnType<typeof getToolsForAgent>
+    let instructions: string
+    let maxSteps: number
+
+    if (agentId === 'plan') {
+      setActivePlan(null)
+      tools = getToolsForAgent(['read_file', 'list_files', 'search_files', 'exit_plan_mode'])
+      instructions = planSystemPrompt
+      maxSteps = 15
+    } else if (agentConfig?.allowedTools) {
+      tools = getToolsForAgent(agentConfig.allowedTools)
+      instructions = agentConfig.systemPrompt ?? defaultSystemPrompt
+      maxSteps = agentConfig.maxSteps ?? 25
+    } else {
+      tools = allTools
+      instructions = agentConfig?.systemPrompt ?? defaultSystemPrompt
+      maxSteps = agentConfig?.maxSteps ?? 25
+    }
 
     const agent = new ToolLoopAgent({
       model,
       tools,
       instructions,
+      stopWhen: stepCountIs(maxSteps),
       maxTokens: chatModel.maxTokens ?? 4096,
       temperature: chatModel.temperature ?? 0.7,
-      stopWhen: stepCountIs(maxSteps),
-    })
+    } as any)
 
     const inner = new DirectChatTransport({ agent, sendReasoning: true })
     return wrapTransportWithAttachments(inner)

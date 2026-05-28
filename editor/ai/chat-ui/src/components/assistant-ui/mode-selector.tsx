@@ -18,9 +18,8 @@ import {
   SelectContent,
   type selectTriggerVariants,
 } from "@/components/assistant-ui/select";
-import { MessageCircleIcon, ScissorsIcon } from "lucide-react";
+import { BotIcon, ListTodoIcon } from "lucide-react";
 import { useAgentId, setAgentId } from "@/bridge";
-import { agents } from "@/ai/agents";
 
 export type ModeOption = {
   id: string;
@@ -79,7 +78,7 @@ function ModeSelectorValue() {
   if (!selected) return <SelectPrimitive.Value />;
 
   return (
-    <span className="!inline-flex items-center gap-1.5">
+    <span className="inline-flex! items-center gap-1.5">
       {selected.icon && <span className="flex shrink-0">{selected.icon}</span>}
       <span className="truncate">{selected.name}</span>
     </span>
@@ -109,12 +108,12 @@ function ModeSelectorItem({ mode, className, ...props }: ModeSelectorItemProps) 
     <SelectPrimitive.Item
       value={mode.id}
       className={cn(
-        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pe-8 ps-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+        "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pe-8 ps-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
         className,
       )}
       {...props}
     >
-      <span className="absolute end-2 flex size-3.5 items-center justify-center">
+      <span className="absolute inset-e-2 flex size-3.5 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
           <CheckIcon className="size-4" />
         </SelectPrimitive.ItemIndicator>
@@ -136,19 +135,11 @@ function ModeSelectorItem({ mode, className, ...props }: ModeSelectorItemProps) 
 
 // ─── Default export (wired to bridge agent state) ─────────────────
 
-const DEFAULT_MODE_ID = "chat";
-
-const agentIcons: Record<string, ReactNode> = {
-  sprite_decompose: <ScissorsIcon className="size-3.5" />,
-};
+const DEFAULT_MODE_ID = "agent";
 
 const defaultModes: ModeOption[] = [
-  { id: DEFAULT_MODE_ID, name: "Chat", icon: <MessageCircleIcon className="size-3.5" /> },
-  ...agents.map((a) => ({
-    id: a.id,
-    name: a.displayName,
-    icon: agentIcons[a.id],
-  })),
+  { id: "agent", name: "Agent", icon: <BotIcon className="size-3.5" /> },
+  { id: "plan", name: "Plan", icon: <ListTodoIcon className="size-3.5" /> },
 ];
 
 type ModeSelectorProps = VariantProps<typeof selectTriggerVariants> & {

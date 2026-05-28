@@ -174,7 +174,7 @@ export function getAttachments(): PendingAttachment[] {
 
 // ─── Agent Selection Store ────────────────────────────────────────
 
-let agentId = 'chat'
+let agentId = 'agent'
 const agentListeners = new Set<() => void>()
 
 export function useAgentId(): string {
@@ -194,6 +194,55 @@ export function setAgentId(id: string) {
 
 export function getAgentId(): string {
   return agentId
+}
+
+// ─── Active Plan Store ────────────────────────────────────────────
+
+export interface PlanStepState {
+  title: string
+  status: 'pending' | 'in_progress' | 'done' | 'skipped'
+}
+
+export interface ActivePlan {
+  summary: string
+  steps: PlanStepState[]
+}
+
+let activePlan: ActivePlan | null = null
+const planListeners = new Set<() => void>()
+
+function emitPlan() {
+  planListeners.forEach((fn) => fn())
+}
+
+export function useActivePlan(): ActivePlan | null {
+  return useSyncExternalStore(
+    (listener) => {
+      planListeners.add(listener)
+      return () => planListeners.delete(listener)
+    },
+    () => activePlan,
+  )
+}
+
+export function getActivePlan(): ActivePlan | null {
+  return activePlan
+}
+
+export function setActivePlan(plan: ActivePlan | null) {
+  activePlan = plan
+  emitPlan()
+}
+
+export function updatePlanStep(stepIndex: number, status: PlanStepState['status']) {
+  if (!activePlan || stepIndex < 0 || stepIndex >= activePlan.steps.length) return
+  activePlan = {
+    ...activePlan,
+    steps: activePlan.steps.map((s, i) =>
+      i === stepIndex ? { ...s, status } : s,
+    ),
+  }
+  emitPlan()
 }
 
 // ─── JS → C++ ────────────────────────────────────────────────────
@@ -253,6 +302,41 @@ export function openFile(path: string) {
   sendToNative('editorAction', { type: 'openFile', path })
 }
 
+// ─── Debugger Error Buffer ────────────────────────────────────────
+
+export interface DebuggerError {
+  type: 'error' | 'warning'
+  message: string
+  source_file?: string
+  source_line?: number
+  source_func?: string
+  condition?: string
+  stack_trace?: string
+  timestamp: number
+}
+
+const MAX_DEBUGGER_ERRORS = 200
+let debuggerErrors: DebuggerError[] = []
+const debuggerErrorListeners = new Set<() => void>()
+
+function emitDebuggerErrors() {
+  debuggerErrorListeners.forEach((fn) => fn())
+}
+
+export function getDebuggerErrors(): DebuggerError[] {
+  return debuggerErrors
+}
+
+export function clearDebuggerErrors() {
+  debuggerErrors = []
+  emitDebuggerErrors()
+}
+
+export function onDebuggerErrorsChange(listener: () => void): () => void {
+  debuggerErrorListeners.add(listener)
+  return () => debuggerErrorListeners.delete(listener)
+}
+
 // ─── C++ → JS (chatBridge) ───────────────────────────────────────
 
 export const chatBridge = {
@@ -276,6 +360,17 @@ export const chatBridge = {
     if (path) {
       addAttachment(path, dataUrl)
     }
+  },
+
+  /** Receive a batch of runtime errors/warnings from the Godot debugger. */
+  onDebuggerErrors(errorsJson: string) {
+    try {
+      const batch = JSON.parse(errorsJson) as Omit<DebuggerError, 'timestamp'>[]
+      const now = Date.now()
+      const entries: DebuggerError[] = batch.map((e) => ({ ...e, timestamp: now }))
+      debuggerErrors = [...debuggerErrors, ...entries].slice(-MAX_DEBUGGER_ERRORS)
+      emitDebuggerErrors()
+    } catch { /* malformed JSON, skip */ }
   },
 }
 

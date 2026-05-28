@@ -775,6 +775,32 @@ void ScriptEditorDebugger::_msg_error(uint64_t p_thread_id, const Array &p_data)
 	} else {
 		error_count++;
 	}
+
+	// Emit structured error data for external consumers (AI Chat, etc.).
+	String err_json = "{\"type\":\"" + String(oe.warning ? "warning" : "error") + "\"";
+	err_json += ",\"message\":\"" + (oe.error_descr.is_empty() ? oe.error : oe.error_descr).json_escape() + "\"";
+	if (!oe.source_file.is_empty()) {
+		err_json += ",\"source_file\":\"" + oe.source_file.json_escape() + "\"";
+		err_json += ",\"source_line\":" + itos(oe.source_line);
+	}
+	if (!oe.source_func.is_empty()) {
+		err_json += ",\"source_func\":\"" + oe.source_func.json_escape() + "\"";
+	}
+	if (!oe.error_descr.is_empty() && !oe.error.is_empty()) {
+		err_json += ",\"condition\":\"" + oe.error.json_escape() + "\"";
+	}
+	if (oe.callstack.size() > 0) {
+		err_json += ",\"stack_trace\":\"";
+		for (int i = 0; i < oe.callstack.size(); i++) {
+			if (i > 0) {
+				err_json += "\\n";
+			}
+			err_json += _format_frame_text(&oe.callstack[i]).json_escape();
+		}
+		err_json += "\"";
+	}
+	err_json += "}";
+	emit_signal(SNAME("error_received"), err_json);
 }
 
 void ScriptEditorDebugger::_msg_servers_function_signature(uint64_t p_thread_id, const Array &p_data) {
@@ -2076,6 +2102,7 @@ void ScriptEditorDebugger::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("set_breakpoint", PropertyInfo("script"), PropertyInfo(Variant::INT, "line"), PropertyInfo(Variant::BOOL, "enabled")));
 	ADD_SIGNAL(MethodInfo("clear_breakpoints"));
 	ADD_SIGNAL(MethodInfo("errors_cleared"));
+	ADD_SIGNAL(MethodInfo("error_received", PropertyInfo(Variant::STRING, "error_json")));
 	ADD_SIGNAL(MethodInfo("embed_shortcut_requested", PropertyInfo(Variant::INT, "embed_shortcut_action")));
 }
 

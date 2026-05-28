@@ -51,6 +51,7 @@ import {
   DownloadIcon,
   MoreHorizontalIcon,
   PencilIcon,
+  PlayIcon,
   PlusIcon,
   RefreshCwIcon,
   SquareIcon,
@@ -342,6 +343,28 @@ const AssistantActionBar: FC = () => {
 };
 
 const UserMessage: FC = () => {
+  const isPlanExec = useAuiState((s) => {
+    const parts = s.message.content
+    if (!parts || parts.length === 0) return false
+    const first = parts[0]
+    return first?.type === 'text' && first.text?.startsWith('[PLAN_EXEC]')
+  })
+
+  if (isPlanExec) {
+    return (
+      <MessagePrimitive.Root
+        data-slot="aui_user-message-root"
+        className="fade-in slide-in-from-bottom-1 animate-in duration-150 px-2"
+        data-role="user"
+      >
+        <div className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+          <PlayIcon className="size-3.5 shrink-0" />
+          <span>Plan execution started</span>
+        </div>
+      </MessagePrimitive.Root>
+    )
+  }
+
   return (
     <MessagePrimitive.Root
       data-slot="aui_user-message-root"
@@ -354,7 +377,7 @@ const UserMessage: FC = () => {
         <div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground empty:hidden">
           <MessagePrimitive.Parts />
         </div>
-        <div className="aui-user-action-bar-wrapper absolute start-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden rtl:translate-x-full">
+        <div className="aui-user-action-bar-wrapper absolute inset-s-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden rtl:translate-x-full">
           <UserActionBar />
         </div>
       </div>

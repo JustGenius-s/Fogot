@@ -16,6 +16,8 @@
 #include "core/os/os.h"
 #include "editor/ai/tools/ai_tool_rpc.h"
 #include "editor/ai/web/editor_web_view.h"
+#include "editor/debugger/editor_debugger_node.h"
+#include "editor/debugger/script_editor_debugger.h"
 #include "editor/editor_interface.h"
 #include "editor/gui/editor_file_dialog.h"
 
@@ -26,6 +28,15 @@ void AIChatDock::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
 			callable_mp(this, &AIChatDock::_load_chat_html).call_deferred();
+		} break;
+		case NOTIFICATION_READY: {
+			EditorDebuggerNode *dbg_node = EditorDebuggerNode::get_singleton();
+			if (dbg_node) {
+				ScriptEditorDebugger *dbg = dbg_node->get_default_debugger();
+				if (dbg) {
+					dbg->connect("error_received", callable_mp(this, &AIChatDock::_on_debugger_error));
+				}
+			}
 		} break;
 	}
 }
@@ -251,6 +262,35 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 			"'" + _js_escape(result) + "'",
 			is_error ? "true" : "false",
 	});
+}
+
+// ─── Debugger error forwarding ────────────────────────────────
+
+void AIChatDock::_on_debugger_error(const String &p_json) {
+	pending_debugger_errors.push_back(p_json);
+	if (!flush_scheduled) {
+		flush_scheduled = true;
+		callable_mp(this, &AIChatDock::_flush_debugger_errors).call_deferred();
+	}
+}
+
+void AIChatDock::_flush_debugger_errors() {
+	flush_scheduled = false;
+	if (pending_debugger_errors.is_empty()) {
+		return;
+	}
+
+	String json_array = "[";
+	for (int i = 0; i < pending_debugger_errors.size(); i++) {
+		if (i > 0) {
+			json_array += ",";
+		}
+		json_array += pending_debugger_errors[i];
+	}
+	json_array += "]";
+	pending_debugger_errors.clear();
+
+	_js_call("onDebuggerErrors", { "'" + _js_escape(json_array) + "'" });
 }
 
 // ─── Constructor ──────────────────────────────────────────────────

@@ -9,6 +9,7 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { bridgeRPC, getImageModels } from '@/bridge'
+import { getDebuggerErrors as getDebuggerErrorBuffer, clearDebuggerErrors } from '@/bridge'
 
 // ─── C++ RPC Tools (filesystem primitives) ───────────────────────
 
@@ -156,6 +157,17 @@ function loadImage(base64: string, mime: string): Promise<HTMLImageElement> {
   })
 }
 
+/** Detect image MIME from base64-encoded magic bytes. */
+function detectMimeFromB64(b64: string): string {
+  const header = b64.slice(0, 16)
+  if (header.startsWith('iVBOR')) return 'image/png'
+  if (header.startsWith('/9j/')) return 'image/jpeg'
+  if (header.startsWith('UklGR')) return 'image/webp'
+  if (header.startsWith('R0lGO')) return 'image/gif'
+  if (header.startsWith('Qk')) return 'image/bmp'
+  return 'image/png'
+}
+
 // ─── Pure JS Tools ────────────────────────────────────────────────
 
 export const cropImage = tool({
@@ -267,9 +279,22 @@ export const generateImage = tool({
         return JSON.stringify({ error: 'No image data in API response', raw: result })
       }
 
+      // Re-encode via Canvas to guarantee the output matches the file extension.
+      // API may return JPEG/WebP regardless of the .png output path.
+      const srcMime = detectMimeFromB64(imageB64)
+      const img = await loadImage(imageB64, srcMime)
+      const canvas = document.createElement('canvas')
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0)
+      const outMime = getMimeFromPath(output)
+      const dataUrl = canvas.toDataURL(outMime)
+      const encodedB64 = dataUrl.split(',')[1]!
+
       await bridgeRPC('write_file', {
         path: output,
-        content: imageB64,
+        content: encodedB64,
         binary: true,
       })
 
@@ -282,6 +307,89 @@ export const generateImage = tool({
       const msg = e instanceof Error ? e.message : String(e)
       return JSON.stringify({ error: `Image generation failed: ${msg}` })
     }
+  },
+})
+
+export const getDebuggerErrors = tool({
+  description:
+    'Get runtime errors and warnings from the Godot debugger. Use this to diagnose issues when the game is running or has just crashed.',
+  inputSchema: z.object({
+    max_count: z
+      .number()
+      .optional()
+      .describe('Maximum number of errors to return (default: 50)'),
+    errors_only: z
+      .boolean()
+      .optional()
+      .describe('If true, filter out warnings and return only errors'),
+    clear: z
+      .boolean()
+      .optional()
+      .describe('If true, clear the error buffer after reading'),
+  }),
+  execute: async ({ max_count, errors_only, clear }) => {
+    let errors = getDebuggerErrorBuffer()
+    if (errors_only) {
+      errors = errors.filter((e) => e.type === 'error')
+    }
+    const limit = max_count ?? 50
+    const result = errors.slice(-limit)
+    if (clear) {
+      clearDebuggerErrors()
+    }
+    return JSON.stringify({
+      total: errors.length,
+      returned: result.length,
+      errors: result,
+    })
+  },
+})
+
+// ─── Plan Mode Tool ───────────────────────────────────────────────
+
+export const exitPlanMode = tool({
+  description:
+    'Signal that the plan is complete and ready for user approval. ' +
+    'You MUST call this tool after writing your plan. ' +
+    'Include the plan steps for progress tracking.',
+  inputSchema: z.object({
+    plan_summary: z
+      .string()
+      .describe('Brief one-line summary of the plan (shown in the approval header)'),
+    steps: z.array(
+      z.string().describe('Step title (concise, actionable)'),
+    ).min(1).describe('Implementation steps from the plan, in execution order'),
+  }),
+  execute: async ({ plan_summary, steps }) => {
+    return JSON.stringify({ summary: plan_summary, steps })
+  },
+})
+
+// ─── Plan Execution Tool ──────────────────────────────────────────
+
+import { getActivePlan, updatePlanStep } from '@/bridge'
+
+export const updatePlan = tool({
+  description:
+    'Update the progress of the active plan. Call this after completing or starting each step.',
+  inputSchema: z.object({
+    step_index: z.number().describe('Zero-based index of the step to update'),
+    status: z.enum(['in_progress', 'done', 'skipped']).describe('New status for the step'),
+  }),
+  execute: async ({ step_index, status }) => {
+    const plan = getActivePlan()
+    if (!plan) return JSON.stringify({ error: 'No active plan' })
+    if (step_index < 0 || step_index >= plan.steps.length) {
+      return JSON.stringify({ error: `Invalid step index: ${step_index}. Plan has ${plan.steps.length} steps.` })
+    }
+    updatePlanStep(step_index, status)
+    const updated = getActivePlan()!
+    const done = updated.steps.filter((s) => s.status === 'done').length
+    return JSON.stringify({
+      success: true,
+      step: updated.steps[step_index].title,
+      progress: `${done}/${updated.steps.length} steps done`,
+    })
   },
 })
 
@@ -304,6 +412,9 @@ export const allTools = {
   crop_image: cropImage,
   get_image_info: getImageInfo,
   generate_image: generateImage,
+  get_debugger_errors: getDebuggerErrors,
+  exit_plan_mode: exitPlanMode,
+  update_plan: updatePlan,
   delegate_task: delegateTask,
 } as const
 
