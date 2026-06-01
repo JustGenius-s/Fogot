@@ -248,6 +248,8 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 		result = AIToolRPC::search_files(args);
 	} else if (p_tool_name == "execute_command") {
 		result = AIToolRPC::execute_command(args);
+	} else if (p_tool_name == "get_class_docs") {
+		result = AIToolRPC::get_class_docs(args);
 	} else {
 		result = "Error: Unknown tool '" + p_tool_name + "'";
 		is_error = true;

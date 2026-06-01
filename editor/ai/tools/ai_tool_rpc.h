@@ -38,4 +38,8 @@ String search_files(const Dictionary &p_args);
 /// Execute a shell command in the project directory. Synchronous with timeout.
 String execute_command(const Dictionary &p_args);
 
+/// Query built-in Godot class documentation (ClassDB / EditorHelp).
+/// Supports listing all classes, brief overviews, and full API details.
+String get_class_docs(const Dictionary &p_args);
+
 } // namespace AIToolRPC

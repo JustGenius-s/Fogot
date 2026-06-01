@@ -67,6 +67,60 @@ You have access to tools that let you read, write, and search files in the user'
 - Match the style of surrounding code — consistency over personal preference
 - Don't add docstrings or type annotations to code you didn't change`,
 
+  gdscriptReference: `# GDScript Language Reference
+Key language features you should know and use correctly:
+
+## Lifecycle
+- _ready(): Called when the node enters the scene tree (initialization)
+- _process(delta): Called every frame (game logic, animation)
+- _physics_process(delta): Called every physics tick (movement, collision)
+- _enter_tree() / _exit_tree(): Called when added to / removed from the tree
+- _input(event) / _unhandled_input(event): Input handling
+
+## Annotations
+- @export var speed: float = 200.0 — expose to Inspector
+- @export_range(0, 100) var health: int — constrained export
+- @export_enum("Sword", "Bow") var weapon: int — enum dropdown
+- @onready var sprite: Sprite2D = $Sprite2D — resolved after _ready
+- @tool — makes the script run in the editor
+- @icon("res://icon.svg") — custom node icon
+
+## Signals
+- signal health_changed(new_hp: int) — declaration
+- health_changed.emit(hp) — emission
+- node.health_changed.connect(_on_health_changed) — connection
+- await signal_name — wait for signal (coroutine)
+
+## Scene & Resources
+- preload("res://scenes/bullet.tscn") — compile-time load (preferred)
+- load("res://scenes/bullet.tscn") — runtime load
+- scene.instantiate() — create instance from PackedScene
+- $NodeName or get_node("NodeName") — get child node reference
+- %UniqueNode — scene-unique node access (Godot 4.x)
+
+## Type System
+- var x: int = 10 — typed variable
+- var x := 10 — inferred type
+- func foo(a: String) -> bool: — typed function
+- as Type — safe cast (returns null on failure)
+- is Type — type check
+
+## Common Patterns
+- get_tree().change_scene_to_file("res://...") — scene switching
+- get_tree().quit() — exit application
+- groups: add_to_group(), is_in_group(), get_tree().call_group()
+- await get_tree().create_timer(1.0).timeout — async delay
+- super() — call parent method (replaces .method() from GDScript 3)
+- Callable(self, "method_name") — first-class function reference
+- func _init(): — constructor
+
+## API Documentation
+Use the get_class_docs tool to look up any Godot engine class API at runtime:
+- get_class_docs({ list_classes: true }) — list all available classes
+- get_class_docs({ class_name: "Node2D", brief: true }) — quick overview
+- get_class_docs({ class_name: "Node2D" }) — full docs with descriptions
+Use brief mode first for an overview, then query full docs if needed.`,
+
   safety: `# Executing Actions with Care
 - Freely take local, reversible actions like editing files or reading.
 - For destructive operations (deleting files, overwriting content without backup), confirm with the user first unless explicitly instructed.
@@ -189,6 +243,60 @@ const ZH = {
 - 与周围代码风格保持一致——一致性优于个人偏好
 - 不要给你没有修改的代码添加文档字符串或类型注解`,
 
+  gdscriptReference: `# GDScript 语言参考
+你应该掌握并正确使用的关键语言特性：
+
+## 生命周期
+- _ready()：节点进入场景树时调用（初始化）
+- _process(delta)：每帧调用（游戏逻辑、动画）
+- _physics_process(delta)：每个物理帧调用（移动、碰撞）
+- _enter_tree() / _exit_tree()：添加到/从场景树移除时调用
+- _input(event) / _unhandled_input(event)：输入处理
+
+## 注解
+- @export var speed: float = 200.0 — 暴露到检查器
+- @export_range(0, 100) var health: int — 受约束的导出
+- @export_enum("Sword", "Bow") var weapon: int — 枚举下拉
+- @onready var sprite: Sprite2D = $Sprite2D — _ready 后解析
+- @tool — 让脚本在编辑器中运行
+- @icon("res://icon.svg") — 自定义节点图标
+
+## 信号
+- signal health_changed(new_hp: int) — 声明
+- health_changed.emit(hp) — 发射
+- node.health_changed.connect(_on_health_changed) — 连接
+- await signal_name — 等待信号（协程）
+
+## 场景与资源
+- preload("res://scenes/bullet.tscn") — 编译时加载（推荐）
+- load("res://scenes/bullet.tscn") — 运行时加载
+- scene.instantiate() — 从 PackedScene 创建实例
+- $NodeName 或 get_node("NodeName") — 获取子节点引用
+- %UniqueNode — 场景唯一节点访问（Godot 4.x）
+
+## 类型系统
+- var x: int = 10 — 类型声明
+- var x := 10 — 类型推断
+- func foo(a: String) -> bool: — 带类型的函数
+- as Type — 安全转换（失败返回 null）
+- is Type — 类型检查
+
+## 常用模式
+- get_tree().change_scene_to_file("res://...") — 场景切换
+- get_tree().quit() — 退出应用
+- 分组：add_to_group()、is_in_group()、get_tree().call_group()
+- await get_tree().create_timer(1.0).timeout — 异步延迟
+- super() — 调用父类方法（替代 GDScript 3 的 .method()）
+- Callable(self, "method_name") — 一等函数引用
+- func _init(): — 构造函数
+
+## API 文档查询
+使用 get_class_docs 工具在运行时查询任何 Godot 引擎类的 API：
+- get_class_docs({ list_classes: true }) — 列出所有可用类
+- get_class_docs({ class_name: "Node2D", brief: true }) — 快速概览
+- get_class_docs({ class_name: "Node2D" }) — 含描述的完整文档
+先用 brief 模式获取概览，需要方法细节时再查询完整文档。`,
+
   safety: `# 谨慎执行操作
 - 可以自由执行本地、可逆的操作，如编辑文件或读取。
 - 对于破坏性操作（删除文件、无备份覆盖内容），除非用户明确指示，否则先确认。
@@ -297,6 +405,7 @@ function buildDefaultSystemPrompt(): string {
     l.doingTasks,
     l.usingTools,
     l.codeStyle,
+    l.gdscriptReference,
     l.safety,
     l.planExecution,
     buildSubAgentSection(),
@@ -314,7 +423,7 @@ function getSubAgents(): AgentConfig[] {
       canBeSubAgent: true,
       whenToUse: l.exploreWhenToUse,
       systemPrompt: l.explorePrompt,
-      allowedTools: ['read_file', 'list_files', 'search_files'],
+      allowedTools: ['read_file', 'list_files', 'search_files', 'get_class_docs'],
       allowNesting: false,
       maxSteps: 15,
     },
