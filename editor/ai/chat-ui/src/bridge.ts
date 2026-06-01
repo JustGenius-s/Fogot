@@ -449,10 +449,11 @@ console.error = (...args: unknown[]) => {
 }
 
 const _origConsoleWarn = console.warn
+const SUPPRESSED_WARNINGS = ['ToolInvocationTracker']
 console.warn = (...args: unknown[]) => {
   _origConsoleWarn.apply(console, args)
   const msg = args.map(stringify).join(' ').trim()
-  if (msg) logToEditor('warn', msg)
+  if (msg && !SUPPRESSED_WARNINGS.some(s => msg.includes(s))) logToEditor('warn', msg)
 }
 
 // Notify C++ that the JS bridge is ready.
