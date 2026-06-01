@@ -11,14 +11,24 @@ import { z } from 'zod'
 import { bridgeRPC, getImageModels } from '@/bridge'
 import { getDebuggerErrors as getDebuggerErrorBuffer, clearDebuggerErrors } from '@/bridge'
 
+// ─── Enhanced Tool Descriptions ───────────────────────────────────
+// Tool descriptions are always in English (part of API schema, all models understand).
+// Language switching only affects the system prompt in agents.ts.
+
 // ─── C++ RPC Tools (filesystem primitives) ───────────────────────
 
 export const readFile = tool({
-  description:
+  description: [
     'Read a file from the Godot project. Returns text content, or base64 if binary mode.',
+    'Always read a file before editing it.',
+    'For large files, use start_line/end_line to read specific ranges instead of the entire file.',
+    'When a file is truncated, the output will indicate total line count — use line ranges to read the rest.',
+  ].join(' '),
   inputSchema: z.object({
     path: z.string().describe('The res:// path to read'),
     binary: z.boolean().optional().describe('If true, returns base64-encoded content'),
+    start_line: z.number().optional().describe('Start reading from this line number (1-based, inclusive)'),
+    end_line: z.number().optional().describe('Stop reading at this line number (1-based, inclusive)'),
   }),
   execute: async (args) => bridgeRPC('read_file', args),
 })
@@ -30,8 +40,13 @@ export const readFile = tool({
 export const writeFileOldContentCache = new Map<string, string>()
 
 export const writeFile = tool({
-  description:
-    'Write content to a file in the Godot project. Creates directories as needed. Use edit_file for partial modifications.',
+  description: [
+    'Write content to a file in the Godot project. Creates directories as needed.',
+    'Rules:',
+    '- Use edit_file for partial modifications (preferred over rewriting the whole file)',
+    '- Only use write_file for creating NEW files or complete rewrites',
+    '- ALWAYS prefer editing existing files over creating new ones',
+  ].join('\n'),
   inputSchema: z.object({
     path: z.string().describe('The res:// path to write'),
     content: z.string().describe('Text content, or base64 for binary mode'),
@@ -51,18 +66,25 @@ export const writeFile = tool({
 })
 
 export const editFile = tool({
-  description:
-    'Edit a file by replacing a unique string with new content. More efficient than write_file for partial changes. The old_string must match exactly one location in the file.',
+  description: [
+    'Edit a file by replacing a unique string with new content. More efficient than write_file for partial changes.',
+    'Rules:',
+    '- You MUST read the file first before editing.',
+    '- The old_string must match exactly one location in the file. Include enough surrounding context (2-4 lines) to make it unique.',
+    '- Preserve exact indentation (tabs/spaces) as it appears in the file.',
+    '- ALWAYS prefer edit_file over write_file when only changing part of a file.',
+    '- If old_string is not unique, include more context to disambiguate.',
+  ].join('\n'),
   inputSchema: z.object({
     path: z.string().describe('The res:// path to edit'),
-    old_string: z.string().describe('The exact text to find (must be unique in the file)'),
-    new_string: z.string().describe('The replacement text'),
+    old_string: z.string().describe('The exact text to find (must be unique in the file). Include 2-4 lines of surrounding context.'),
+    new_string: z.string().describe('The replacement text. Preserve original indentation.'),
   }),
   execute: async (args) => bridgeRPC('edit_file', args),
 })
 
 export const listFiles = tool({
-  description: 'List files in a Godot project directory.',
+  description: 'List files in a Godot project directory. Use recursive option to explore subdirectories.',
   inputSchema: z.object({
     path: z.string().describe('The res:// directory path'),
     recursive: z.boolean().optional().describe('List files recursively'),
@@ -71,8 +93,7 @@ export const listFiles = tool({
 })
 
 export const deleteFile = tool({
-  description:
-    'Delete a file or empty directory from the Godot project.',
+  description: 'Delete a file or empty directory from the Godot project. Only use when the user explicitly asks to delete.',
   inputSchema: z.object({
     path: z.string().describe('The res:// path to delete'),
   }),
@@ -100,10 +121,15 @@ export const moveFile = tool({
 })
 
 export const searchFiles = tool({
-  description:
+  description: [
     'Search for text content within project files (grep-like). Returns matching lines with file paths and line numbers.',
+    'Tips:',
+    '- Use file_pattern to narrow scope (e.g. "*.gd" for scripts only)',
+    '- Start broad, then narrow down if too many results',
+    '- Try multiple search terms if the first does not yield results',
+  ].join('\n'),
   inputSchema: z.object({
-    query: z.string().describe('Text to search for'),
+    query: z.string().describe('Text or pattern to search for'),
     path: z
       .string()
       .optional()
@@ -115,14 +141,19 @@ export const searchFiles = tool({
     file_pattern: z
       .string()
       .optional()
-      .describe('Filter by file extension, e.g. "*.gd" or ".tscn"'),
+      .describe('Filter by file extension, e.g. "*.gd" or "*.tscn"'),
   }),
   execute: async (args) => bridgeRPC('search_files', args),
 })
 
 export const executeCommand = tool({
-  description:
-    'Execute a shell command in the Godot project directory. Use for running scripts, git operations, build tools, etc. Returns stdout+stderr and exit code.',
+  description: [
+    'Execute a shell command in the Godot project directory. Returns stdout+stderr and exit code.',
+    'Rules:',
+    '- Only use for operations that genuinely require shell execution (git, build tools, running scripts)',
+    '- Do NOT use for: reading files (use read_file), searching (use search_files), listing dirs (use list_files)',
+    '- Be cautious with destructive commands',
+  ].join('\n'),
   inputSchema: z.object({
     command: z.string().describe('Shell command to execute'),
     timeout_ms: z

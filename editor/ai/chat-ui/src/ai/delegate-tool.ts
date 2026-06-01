@@ -10,7 +10,7 @@
 import { tool, ToolLoopAgent, stepCountIs, readUIMessageStream } from 'ai'
 import type { LanguageModel, ToolSet } from 'ai'
 import { z } from 'zod'
-import { subAgents, getSubAgent } from './agents'
+import { getSubAgent, getPromptLanguage } from './agents'
 
 // ─── Injected dependencies ────────────────────────────────────────
 
@@ -30,35 +30,30 @@ export function configureDelegateTool(
   _getTools = getTools
 }
 
-// ─── Description builder ──────────────────────────────────────────
-
-function buildDescription(): string {
-  const agentList = subAgents
-    .filter((a) => a.canBeSubAgent)
-    .map((a) => `  - "${a.id}": ${a.whenToUse}`)
-    .join('\n')
-
-  return [
-    'Delegate a task to a specialized sub-agent that runs independently.',
-    'The sub-agent has its own context window and tools.',
-    'Available agent types:',
-    agentList,
-  ].join('\n')
-}
-
 // ─── Tool definition ─────────────────────────────────────────────
 
 export const delegateTask = tool({
-  description: buildDescription(),
+  description: [
+    'Delegate a task to a specialized sub-agent that runs independently.',
+    'The sub-agent has its own context window and tools.',
+    'Available agent types:',
+    '  - "explore": Explore and search files in the project (read-only, fast, thorough)',
+    '  - "coder": Implement code changes across multiple files in the project',
+    '',
+    'Guidelines:',
+    '- Always provide a detailed, self-contained task description — sub-agents cannot see your conversation.',
+    '- Brief the sub-agent like a smart colleague: explain what, why, and what you already know.',
+    '- Include relevant file paths and context.',
+  ].join('\n'),
   inputSchema: z.object({
     task: z.string().describe(
-      'Detailed, self-contained task description. The sub-agent cannot see your conversation.',
+      'Detailed, self-contained task description. The sub-agent cannot see your conversation. Include file paths, context, and what specifically needs to happen.',
     ),
     agent_type: z
       .string()
       .optional()
       .describe(
-        `Sub-agent type (${subAgents.filter((a) => a.canBeSubAgent).map((a) => `"${a.id}"`).join(', ')}). Defaults to "explore".`,
+        'Sub-agent type: "explore" (read-only search/analysis) or "coder" (implement changes). Defaults to "explore".',
       ),
   }),
 

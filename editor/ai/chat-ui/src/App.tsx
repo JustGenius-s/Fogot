@@ -11,9 +11,9 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Thread } from '@/components/assistant-ui/thread'
 import { ModelSettings } from '@/components/assistant-ui/model-settings'
-import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getAttachments, clearAttachments, setActivePlan } from '@/bridge'
+import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getAttachments, clearAttachments, setActivePlan, usePromptLanguage } from '@/bridge'
 import { allTools, getToolsForAgent } from '@/ai/tools'
-import { defaultSystemPrompt, planSystemPrompt, getAgent } from '@/ai/agents'
+import { getDefaultSystemPrompt, getPlanSystemPrompt, getAgent } from '@/ai/agents'
 import { configureDelegateTool } from '@/ai/delegate-tool'
 import { DEFAULT_MODE_ID } from '@/components/assistant-ui/mode-selector'
 import { threadListAdapter } from '@/lib/thread-storage'
@@ -227,6 +227,8 @@ export default function App() {
   const chatModelId = useSelectedChatModelId()
   const chatModel = getSelectedChatModel()
 
+  const promptLang = usePromptLanguage()
+
   const isConfigured = !!(chatModel?.apiKey && chatModel?.apiEndpoint && chatModel?.model)
 
   const transport = useMemo(() => {
@@ -250,15 +252,15 @@ export default function App() {
     if (agentId === 'plan') {
       setActivePlan(null)
       tools = getToolsForAgent(['read_file', 'list_files', 'search_files', 'exit_plan_mode'])
-      instructions = planSystemPrompt
+      instructions = getPlanSystemPrompt()
       maxSteps = 15
     } else if (agentConfig?.allowedTools) {
       tools = getToolsForAgent(agentConfig.allowedTools)
-      instructions = agentConfig.systemPrompt ?? defaultSystemPrompt
+      instructions = agentConfig.systemPrompt ?? getDefaultSystemPrompt()
       maxSteps = agentConfig.maxSteps ?? 25
     } else {
       tools = allTools
-      instructions = agentConfig?.systemPrompt ?? defaultSystemPrompt
+      instructions = agentConfig?.systemPrompt ?? getDefaultSystemPrompt()
       maxSteps = agentConfig?.maxSteps ?? 25
     }
 
@@ -273,7 +275,7 @@ export default function App() {
 
     const inner = new DirectChatTransport({ agent, sendReasoning: true })
     return wrapTransportWithAttachments(inner)
-  }, [chatModelId, agentId, isConfigured, chatModel])
+  }, [chatModelId, agentId, isConfigured, chatModel, promptLang])
 
   if (!transport) {
     return <UnconfiguredView />

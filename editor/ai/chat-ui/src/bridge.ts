@@ -31,6 +31,7 @@ export interface AIConfig {
 
 const MODELS_STORAGE_KEY = 'fogot-ai-models'
 const SELECTED_MODEL_KEY = 'fogot-ai-selected-model'
+const PROMPT_LANG_KEY = 'fogot-ai-prompt-lang'
 
 function loadModelsFromStorage(): ModelConfig[] {
   try {
@@ -126,6 +127,44 @@ export function setSelectedChatModelId(id: string) {
 export function getSelectedChatModel(): ModelConfig | undefined {
   const chatModels = getChatModels()
   return chatModels.find((m) => m.id === selectedChatModelId) ?? chatModels[0]
+}
+
+// ─── Prompt Language Store ─────────────────────────────────────────
+
+import { setPromptLanguage as _setPromptLang, type PromptLanguage } from '@/ai/agents'
+
+function loadPromptLang(): PromptLanguage {
+  try {
+    const v = localStorage.getItem(PROMPT_LANG_KEY)
+    if (v === 'en' || v === 'zh') return v
+  } catch {}
+  return 'zh'
+}
+
+let promptLang: PromptLanguage = loadPromptLang()
+_setPromptLang(promptLang) // sync on startup
+
+const promptLangListeners = new Set<() => void>()
+
+export function usePromptLanguage(): PromptLanguage {
+  return useSyncExternalStore(
+    (listener) => {
+      promptLangListeners.add(listener)
+      return () => promptLangListeners.delete(listener)
+    },
+    () => promptLang,
+  )
+}
+
+export function getPromptLang(): PromptLanguage {
+  return promptLang
+}
+
+export function setPromptLang(lang: PromptLanguage) {
+  promptLang = lang
+  _setPromptLang(lang)
+  try { localStorage.setItem(PROMPT_LANG_KEY, lang) } catch {}
+  promptLangListeners.forEach((fn) => fn())
 }
 
 // ─── Pending Attachments Store ────────────────────────────────────
