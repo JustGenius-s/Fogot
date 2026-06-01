@@ -23,6 +23,7 @@ import { Image } from "@/components/assistant-ui/image";
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
+import { ContextDisplayRing } from "@/components/assistant-ui/context-display";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -210,14 +211,17 @@ const ComposerAction: FC = () => {
       <div className="flex items-center gap-1">
         <ModelSelector />
         <ModeSelector />
-        <ComposerAddAttachment />
       </div>
-      <AuiIf condition={(s) => !s.thread.isRunning}>
-        <ComposerPrimitive.Send render={<TooltipIconButton tooltip="Send message" side="bottom" type="button" variant="default" size="icon" className="aui-composer-send size-8 rounded-full" aria-label="Send message" />}><ArrowUpIcon className="aui-composer-send-icon size-4" /></ComposerPrimitive.Send>
-      </AuiIf>
-      <AuiIf condition={(s) => s.thread.isRunning}>
-        <ComposerPrimitive.Cancel render={<Button type="button" variant="default" size="icon" className="aui-composer-cancel size-8 rounded-full" aria-label="Stop generating" />}><SquareIcon className="aui-composer-cancel-icon size-3 fill-current" /></ComposerPrimitive.Cancel>
-      </AuiIf>
+      <div className="flex items-center gap-1">
+        <ContextDisplayRing side="top" />
+        <ComposerAddAttachment />
+        <AuiIf condition={(s) => !s.thread.isRunning}>
+          <ComposerPrimitive.Send render={<TooltipIconButton tooltip="Send message" side="bottom" type="button" variant="default" size="icon" className="aui-composer-send size-8 rounded-full" aria-label="Send message" />}><ArrowUpIcon className="aui-composer-send-icon size-4" /></ComposerPrimitive.Send>
+        </AuiIf>
+        <AuiIf condition={(s) => s.thread.isRunning}>
+          <ComposerPrimitive.Cancel render={<Button type="button" variant="default" size="icon" className="aui-composer-cancel size-8 rounded-full" aria-label="Stop generating" />}><SquareIcon className="aui-composer-cancel-icon size-3 fill-current" /></ComposerPrimitive.Cancel>
+        </AuiIf>
+      </div>
     </div>
   );
 };

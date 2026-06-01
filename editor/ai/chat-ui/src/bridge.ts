@@ -21,6 +21,7 @@ export interface ModelConfig {
   model: string
   maxTokens?: number
   temperature?: number
+  contextWindow?: number
 }
 
 export interface AIConfig {

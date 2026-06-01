@@ -1,7 +1,7 @@
 "use client";
 
 import { type PropsWithChildren, useEffect, useRef, useState, type FC } from "react";
-import { XIcon, PlusIcon, FileText } from "lucide-react";
+import { XIcon, PaperclipIcon, FileText } from "lucide-react";
 import {
   AttachmentPrimitive,
   ComposerPrimitive,
@@ -164,7 +164,7 @@ const AttachmentUI: FC = () => {
 
 const AttachmentRemove: FC = () => {
   return (
-    <AttachmentPrimitive.Remove render={<TooltipIconButton tooltip="Remove file" className="aui-attachment-tile-remove absolute end-1.5 top-1.5 size-3.5 rounded-full bg-white text-muted-foreground opacity-100 shadow-sm hover:bg-white! [&_svg]:text-black hover:[&_svg]:text-destructive" side="top" />}><XIcon className="aui-attachment-remove-icon size-3 dark:stroke-[2.5px]" /></AttachmentPrimitive.Remove>
+    <AttachmentPrimitive.Remove render={<TooltipIconButton tooltip="Remove file" className="aui-attachment-tile-remove absolute inset-e-1.5 top-1.5 size-3.5 rounded-full bg-white text-muted-foreground opacity-100 shadow-sm hover:bg-white! [&_svg]:text-black hover:[&_svg]:text-destructive" side="top" />}><XIcon className="aui-attachment-remove-icon size-3 dark:stroke-[2.5px]" /></AttachmentPrimitive.Remove>
   );
 };
 
@@ -245,14 +245,14 @@ export const ComposerAddAttachment: FC = () => {
       />
       <TooltipIconButton
         tooltip="Add Attachment"
-        side="bottom"
+        side="top"
         variant="ghost"
         size="icon"
-        className="aui-composer-add-attachment size-8 rounded-full p-1 font-semibold text-xs hover:bg-muted-foreground/15 dark:border-muted-foreground/15 dark:hover:bg-muted-foreground/30"
+        className="aui-composer-add-attachment size-8 rounded-full p-1 hover:bg-muted-foreground/15 dark:hover:bg-muted-foreground/30"
         aria-label="Add Attachment"
         onClick={() => inputRef.current?.click()}
       >
-        <PlusIcon className="aui-attachment-add-icon size-5 stroke-[1.5px]" />
+        <PaperclipIcon className="aui-attachment-add-icon size-4" />
       </TooltipIconButton>
     </>
   );

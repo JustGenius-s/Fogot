@@ -114,33 +114,54 @@ const ModelForm: FC<{
         </div>
 
         {model.type === "chat" && (
-          <div className="grid grid-cols-2 gap-3">
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className={labelClass}>Max Tokens</label>
+                <input
+                  className={inputClass}
+                  type="number"
+                  value={model.maxTokens ?? 4096}
+                  onChange={(e) =>
+                    set({ maxTokens: Number(e.target.value) || 4096 })
+                  }
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className={labelClass}>Temperature</label>
+                <input
+                  className={inputClass}
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="2"
+                  value={model.temperature ?? 0.7}
+                  onChange={(e) =>
+                    set({ temperature: Number(e.target.value) || 0.7 })
+                  }
+                />
+              </div>
+            </div>
             <div className="flex flex-col gap-1.5">
-              <label className={labelClass}>Max Tokens</label>
+              <label className={labelClass}>Context Window (tokens)</label>
               <input
                 className={inputClass}
                 type="number"
-                value={model.maxTokens ?? 4096}
+                placeholder="1000000"
+                value={model.contextWindow ?? ""}
                 onChange={(e) =>
-                  set({ maxTokens: Number(e.target.value) || 4096 })
+                  set({
+                    contextWindow: e.target.value
+                      ? Number(e.target.value)
+                      : undefined,
+                  })
                 }
               />
+              <p className="text-[10px] text-muted-foreground/60">
+                DeepSeek: 1M, GPT-4o: 128k, Claude: 200k
+              </p>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <label className={labelClass}>Temperature</label>
-              <input
-                className={inputClass}
-                type="number"
-                step="0.1"
-                min="0"
-                max="2"
-                value={model.temperature ?? 0.7}
-                onChange={(e) =>
-                  set({ temperature: Number(e.target.value) || 0.7 })
-                }
-              />
-            </div>
-          </div>
+          </>
         )}
       </div>
 
