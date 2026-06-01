@@ -158,7 +158,13 @@ export function createHistoryAdapter(
     async load() {
       const remoteId = getRemoteId()
       if (!remoteId) return { messages: [] }
-      return { messages: loadMessages(remoteId) }
+      const msgs = loadMessages(remoteId)
+      return {
+        messages: msgs.map((m) => ({
+          message: m,
+          parentId: null as string | null,
+        })),
+      }
     },
     async append({ message, parentId }) {
       void parentId

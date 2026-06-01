@@ -58,8 +58,8 @@ const MarkdownTextImpl = () => {
   return (
     <StreamdownTextPrimitive
       components={{
-        SyntaxHighlighter,
-        CodeHeader,
+        SyntaxHighlighter: SyntaxHighlighter as never,
+        CodeHeader: CodeHeader as never,
       }}
       containerClassName="aui-md"
     />
