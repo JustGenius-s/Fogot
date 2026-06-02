@@ -338,8 +338,11 @@ export function bridgeRPC(
 
 // ─── Editor Actions ───────────────────────────────────────────────
 
-export function openFile(path: string) {
-  sendToNative('editorAction', { type: 'openFile', path })
+export function openFile(path: string, startLine?: number, endLine?: number) {
+  const params: Record<string, string> = { type: 'openFile', path }
+  if (startLine != null) params.startLine = String(startLine)
+  if (endLine != null) params.endLine = String(endLine)
+  sendToNative('editorAction', params)
 }
 
 // ─── Debugger Error Buffer ────────────────────────────────────────

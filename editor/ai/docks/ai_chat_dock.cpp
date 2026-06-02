@@ -83,6 +83,7 @@ void AIChatDock::_on_js_message(const String &p_action, const Dictionary &p_para
 		if (type == "openFile") {
 			String path = p_params.get("path", "");
 			if (!path.is_empty()) {
+				int start_line = String(p_params.get("startLine", "-1")).to_int();
 				if (path.get_extension() == "tscn" || path.get_extension() == "scn") {
 					EditorInterface::get_singleton()->open_scene_from_path(path);
 				} else {
@@ -90,7 +91,7 @@ void AIChatDock::_on_js_message(const String &p_action, const Dictionary &p_para
 					if (res.is_valid()) {
 						Ref<Script> script = res;
 						if (script.is_valid()) {
-							EditorInterface::get_singleton()->edit_script(script);
+							EditorInterface::get_singleton()->edit_script(script, start_line, 0, true);
 						} else {
 							EditorInterface::get_singleton()->edit_resource(res);
 						}

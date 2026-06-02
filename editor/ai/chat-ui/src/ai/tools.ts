@@ -65,6 +65,12 @@ export const writeFile = tool({
   },
 })
 
+/**
+ * Cache of edit location info, keyed by path.
+ * Stores the 1-based start line of the last edit_file old_string match.
+ */
+export const editFileLineCache = new Map<string, number>()
+
 export const editFile = tool({
   description: [
     'Edit a file by replacing a unique string with new content. More efficient than write_file for partial changes.',
@@ -80,7 +86,17 @@ export const editFile = tool({
     old_string: z.string().describe('The exact text to find (must be unique in the file). Include 2-4 lines of surrounding context.'),
     new_string: z.string().describe('The replacement text. Preserve original indentation.'),
   }),
-  execute: async (args) => bridgeRPC('edit_file', args),
+  execute: async (args) => {
+    try {
+      const content = await bridgeRPC('read_file', { path: args.path })
+      const idx = content.indexOf(args.old_string)
+      if (idx >= 0) {
+        const linesBefore = content.slice(0, idx).split('\n')
+        editFileLineCache.set(args.path, linesBefore.length)
+      }
+    } catch { /* file unreadable, skip */ }
+    return bridgeRPC('edit_file', args)
+  },
 })
 
 export const listFiles = tool({

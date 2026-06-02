@@ -23,8 +23,10 @@ import {
 import { DEFAULT_MODE_ID } from '@/components/assistant-ui/mode-selector'
 import { threadListAdapter } from '@/lib/thread-storage'
 import { WriteFileToolUI } from '@/components/custom/write-file-tool-ui'
+import { EditFileToolUI } from '@/components/custom/edit-file-tool-ui'
 import { DelegateTaskToolUI } from '@/components/custom/delegate-task-tool-ui'
 import { ExitPlanModeToolUI } from '@/components/custom/create-plan-tool-ui'
+import { ReadFileToolUI } from '@/components/custom/read-file-tool-ui'
 
 // ─── Transport Wrapper (attachments + context compression) ────────
 
@@ -369,7 +371,9 @@ const ChatProvider: FC<{
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
+      <ReadFileToolUI />
       <WriteFileToolUI />
+      <EditFileToolUI />
       <DelegateTaskToolUI />
       <ExitPlanModeToolUI />
       <TooltipProvider>
