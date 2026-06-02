@@ -23,6 +23,10 @@ String edit_file(const Dictionary &p_args);
 /// List files/directories under a project path. Supports recursive listing.
 String list_files(const Dictionary &p_args);
 
+/// List image assets under a project directory, returning structured JSON
+/// (path, name, size, ext) for use by the asset manager UI.
+String list_assets(const Dictionary &p_args);
+
 /// Delete a file or empty directory from the project.
 String delete_file(const Dictionary &p_args);
 

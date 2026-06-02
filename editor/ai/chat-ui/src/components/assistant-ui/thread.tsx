@@ -20,6 +20,11 @@ import {
   ToolGroupTrigger,
 } from "@/components/assistant-ui/tool-group";
 import { Image } from "@/components/assistant-ui/image";
+import { ViewToggle } from "@/components/assets/view-toggle";
+import { AssetPicker } from "@/components/assets/asset-picker";
+import { ImageSizeSelector } from "@/components/assets/image-size-selector";
+import { SaveToAssetsButton } from "@/components/assets/save-to-assets-button";
+import { GeneratingImageIndicator } from "@/components/assets/generating-indicator";
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
@@ -50,6 +55,7 @@ import {
   ChevronRightIcon,
   CopyIcon,
   DownloadIcon,
+  Loader2Icon,
   MoreHorizontalIcon,
   PencilIcon,
   PlayIcon,
@@ -58,6 +64,7 @@ import {
   SquareIcon,
 } from "lucide-react";
 import { useState, type FC } from "react";
+import { useAgentId } from "@/bridge";
 
 const ThreadHeader: FC = () => {
   const [open, setOpen] = useState(false);
@@ -87,6 +94,7 @@ const ThreadHeader: FC = () => {
       </Popover.Root>
 
       <div className="flex items-center gap-0.5">
+        <ViewToggle />
         <ModelSettings />
         <ThreadListPrimitive.New asChild>
           <button className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
@@ -211,9 +219,11 @@ const ComposerAction: FC = () => {
       <div className="flex items-center gap-1">
         <ModelSelector />
         <ModeSelector />
+        <ImageSizeSelector />
       </div>
       <div className="flex items-center gap-1">
         <ContextDisplayRing side="top" />
+        <AssetPicker />
         <ComposerAddAttachment />
         <AuiIf condition={(s) => !s.thread.isRunning}>
           <ComposerPrimitive.Send render={<TooltipIconButton tooltip="Send message" side="bottom" type="button" variant="default" size="icon" className="aui-composer-send size-8 rounded-full" aria-label="Send message" />}><ArrowUpIcon className="aui-composer-send-icon size-4" /></ComposerPrimitive.Send>
@@ -233,6 +243,25 @@ const MessageError: FC = () => {
         <ErrorPrimitive.Message className="aui-message-error-message line-clamp-2" />
       </ErrorPrimitive.Root>
     </MessagePrimitive.Error>
+  );
+};
+
+const RunningIndicator: FC = () => {
+  const isRunning = useAuiState((s) => s.message.status?.type === "running");
+  const isEmpty = useAuiState((s) => (s.message.content?.length ?? 0) === 0);
+  const agentId = useAgentId();
+
+  if (!isRunning || !isEmpty) return null;
+
+  if (agentId === "image") {
+    return <GeneratingImageIndicator />;
+  }
+
+  return (
+    <span className="flex items-center gap-1.5 text-muted-foreground text-sm">
+      <Loader2Icon className="size-3.5 animate-spin" />
+      Working…
+    </span>
   );
 };
 
@@ -299,11 +328,29 @@ const AssistantMessage: FC = () => {
                 return part.toolUI ?? <ToolFallback {...part} />;
               case "image":
                 return <Image {...part} />;
+              case "file":
+                if (part.mimeType?.startsWith("image/")) {
+                  return (
+                    <Image.Root>
+                      <Image.Zoom src={part.data}>
+                        <Image.Preview src={part.data} />
+                      </Image.Zoom>
+                      <div className="flex items-center justify-between">
+                        <Image.Actions
+                          part={{ type: "image", image: part.data, filename: part.filename }}
+                        />
+                        <SaveToAssetsButton dataUrl={part.data} mimeType={part.mimeType} />
+                      </div>
+                    </Image.Root>
+                  );
+                }
+                return null;
               default:
                 return null;
             }
           }}
         </MessagePrimitive.GroupedParts>
+        <RunningIndicator />
         <MessageError />
       </div>
 

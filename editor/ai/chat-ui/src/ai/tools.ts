@@ -8,8 +8,9 @@
 
 import { tool } from 'ai'
 import { z } from 'zod'
-import { bridgeRPC, getImageModels } from '@/bridge'
+import { bridgeRPC } from '@/bridge'
 import { getDebuggerErrors as getDebuggerErrorBuffer, clearDebuggerErrors } from '@/bridge'
+import { getMimeFromPath, loadImage, generateImageAsset } from '@/lib/image-gen'
 
 // ─── Enhanced Tool Descriptions ───────────────────────────────────
 // Tool descriptions are always in English (part of API schema, all models understand).
@@ -180,41 +181,6 @@ export const executeCommand = tool({
   execute: async (args) => bridgeRPC('execute_command', args),
 })
 
-// ─── Helpers ──────────────────────────────────────────────────────
-
-function getMimeFromPath(path: string): string {
-  const ext = path.split('.').pop()?.toLowerCase() ?? 'png'
-  const map: Record<string, string> = {
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg',
-    webp: 'image/webp',
-    gif: 'image/gif',
-    bmp: 'image/bmp',
-  }
-  return map[ext] ?? 'image/png'
-}
-
-function loadImage(base64: string, mime: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = reject
-    img.src = `data:${mime};base64,${base64}`
-  })
-}
-
-/** Detect image MIME from base64-encoded magic bytes. */
-function detectMimeFromB64(b64: string): string {
-  const header = b64.slice(0, 16)
-  if (header.startsWith('iVBOR')) return 'image/png'
-  if (header.startsWith('/9j/')) return 'image/jpeg'
-  if (header.startsWith('UklGR')) return 'image/webp'
-  if (header.startsWith('R0lGO')) return 'image/gif'
-  if (header.startsWith('Qk')) return 'image/bmp'
-  return 'image/png'
-}
-
 // ─── Pure JS Tools ────────────────────────────────────────────────
 
 export const cropImage = tool({
@@ -278,82 +244,20 @@ export const generateImage = tool({
       .describe('Optional reference image res:// path for img2img'),
   }),
   execute: async ({ prompt, output, size, reference_image }) => {
-    const imageModels = getImageModels()
-    const imgModel = imageModels[0]
-
-    if (!imgModel || !imgModel.apiKey || !imgModel.apiEndpoint || !imgModel.model) {
-      return JSON.stringify({
-        error:
-          'No image model configured. Add an "image" type model in Editor Settings → AI → Models.',
-      })
+    const result = await generateImageAsset({
+      prompt,
+      output,
+      size,
+      referenceImage: reference_image,
+    })
+    if (!result.success) {
+      return JSON.stringify({ error: result.error })
     }
-
-    try {
-      const body: Record<string, unknown> = {
-        model: imgModel.model,
-        prompt,
-        n: 1,
-        size: size || '1024x1024',
-        response_format: 'b64_json',
-      }
-
-      if (reference_image) {
-        const refBase64 = await bridgeRPC('read_file', {
-          path: reference_image,
-          binary: true,
-        })
-        body.image = refBase64
-      }
-
-      const url = `${imgModel.apiEndpoint.replace(/\/+$/, '')}/images/generations`
-      const resp = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${imgModel.apiKey}`,
-        },
-        body: JSON.stringify(body),
-      })
-
-      if (!resp.ok) {
-        const errText = await resp.text()
-        return JSON.stringify({ error: `API request failed (${resp.status}): ${errText}` })
-      }
-
-      const result = await resp.json()
-      const imageB64: string | undefined = result.data?.[0]?.b64_json
-      if (!imageB64) {
-        return JSON.stringify({ error: 'No image data in API response', raw: result })
-      }
-
-      // Re-encode via Canvas to guarantee the output matches the file extension.
-      // API may return JPEG/WebP regardless of the .png output path.
-      const srcMime = detectMimeFromB64(imageB64)
-      const img = await loadImage(imageB64, srcMime)
-      const canvas = document.createElement('canvas')
-      canvas.width = img.naturalWidth
-      canvas.height = img.naturalHeight
-      const ctx = canvas.getContext('2d')!
-      ctx.drawImage(img, 0, 0)
-      const outMime = getMimeFromPath(output)
-      const dataUrl = canvas.toDataURL(outMime)
-      const encodedB64 = dataUrl.split(',')[1]!
-
-      await bridgeRPC('write_file', {
-        path: output,
-        content: encodedB64,
-        binary: true,
-      })
-
-      return JSON.stringify({
-        success: true,
-        path: output,
-        revised_prompt: result.data?.[0]?.revised_prompt,
-      })
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e)
-      return JSON.stringify({ error: `Image generation failed: ${msg}` })
-    }
+    return JSON.stringify({
+      success: true,
+      path: result.path,
+      revised_prompt: result.revisedPrompt,
+    })
   },
 })
 

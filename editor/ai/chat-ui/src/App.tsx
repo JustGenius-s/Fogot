@@ -11,9 +11,11 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Thread } from '@/components/assistant-ui/thread'
 import { ModelSettings } from '@/components/assistant-ui/model-settings'
-import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getAttachments, clearAttachments, setActivePlan, usePromptLanguage } from '@/bridge'
+import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getImageModels, getAttachments, clearAttachments, setActivePlan, usePromptLanguage, useAppView } from '@/bridge'
+import { AssetMode } from '@/components/assets/asset-mode'
 import { allTools, getToolsForAgent } from '@/ai/tools'
 import { getDefaultSystemPrompt, getPlanSystemPrompt, getAgent } from '@/ai/agents'
+import { createImageChatTransport } from '@/ai/image-transport'
 import { configureDelegateTool } from '@/ai/delegate-tool'
 import {
   updateUsageSnapshot,
@@ -389,14 +391,26 @@ const ChatProvider: FC<{
       <DelegateTaskToolUI />
       <ExitPlanModeToolUI />
       <TooltipProvider>
-        <div className="flex flex-col h-full">
-          <div className="flex-1 min-h-0">
-            <Thread />
-          </div>
-          <StatusBar status={status} />
-        </div>
+        <MainView status={status} />
       </TooltipProvider>
     </AssistantRuntimeProvider>
+  )
+}
+
+const MainView: FC<{ status: string }> = ({ status }) => {
+  const view = useAppView()
+
+  if (view === 'assets') {
+    return <AssetMode />
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex-1 min-h-0">
+        <Thread />
+      </div>
+      <StatusBar status={status} />
+    </div>
   )
 }
 
@@ -413,6 +427,9 @@ export default function App() {
   const isConfigured = !!(chatModel?.apiKey && chatModel?.apiEndpoint && chatModel?.model)
 
   const transport = useMemo(() => {
+    // Image mode talks directly to the image model — no chat model required.
+    if (agentId === 'image') return createImageChatTransport()
+
     if (!isConfigured || !chatModel) return null
 
     const provider = createOpenAICompatible({
@@ -500,7 +517,14 @@ export default function App() {
     return <UnconfiguredView />
   }
 
-  const status = !chatModel?.apiKey ? 'No API key configured' : 'Ready'
+  const status =
+    agentId === 'image'
+      ? getImageModels().length > 0
+        ? 'Ready'
+        : 'No image model configured'
+      : !chatModel?.apiKey
+        ? 'No API key configured'
+        : 'Ready'
 
   return (
     <ChatProvider

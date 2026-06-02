@@ -20,8 +20,11 @@ import {
 } from "@/components/assistant-ui/select";
 import {
   useConfig,
+  useAgentId,
   useSelectedChatModelId,
   setSelectedChatModelId,
+  useSelectedImageModelId,
+  setSelectedImageModelId,
   type ModelConfig,
 } from "@/bridge";
 
@@ -153,21 +156,31 @@ const ModelSelectorImpl: FC<ModelSelectorProps> = ({
   contentClassName,
 }) => {
   const config = useConfig();
-  const value = useSelectedChatModelId();
-  const chatModels = config.models.filter((m) => m.type === "chat");
+  const agentId = useAgentId();
+  const chatModelId = useSelectedChatModelId();
+  const imageModelId = useSelectedImageModelId();
 
-  if (chatModels.length === 0) {
+  const isImageMode = agentId === "image";
+  const models = config.models.filter((m) =>
+    m.type === (isImageMode ? "image" : "chat"),
+  );
+  const value = isImageMode ? imageModelId : chatModelId;
+  const onValueChange = isImageMode
+    ? setSelectedImageModelId
+    : setSelectedChatModelId;
+
+  if (models.length === 0) {
     return (
       <span className="px-2 py-1 text-xs text-destructive/80">
-        No model
+        {isImageMode ? "No image model" : "No model"}
       </span>
     );
   }
 
-  if (chatModels.length === 1) return null;
+  if (models.length === 1) return null;
 
   return (
-    <ModelSelectorRoot models={chatModels} value={value} onValueChange={setSelectedChatModelId}>
+    <ModelSelectorRoot models={models} value={value} onValueChange={onValueChange}>
       <ModelSelectorTrigger variant={variant} size={size} />
       <ModelSelectorContent className={contentClassName} />
     </ModelSelectorRoot>

@@ -239,6 +239,8 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 		result = AIToolRPC::edit_file(args);
 	} else if (p_tool_name == "list_files") {
 		result = AIToolRPC::list_files(args);
+	} else if (p_tool_name == "list_assets") {
+		result = AIToolRPC::list_assets(args);
 	} else if (p_tool_name == "delete_file") {
 		result = AIToolRPC::delete_file(args);
 	} else if (p_tool_name == "copy_file") {

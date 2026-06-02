@@ -32,6 +32,8 @@ export interface AIConfig {
 
 const MODELS_STORAGE_KEY = 'fogot-ai-models'
 const SELECTED_MODEL_KEY = 'fogot-ai-selected-model'
+const SELECTED_IMAGE_MODEL_KEY = 'fogot-ai-selected-image-model'
+const IMAGE_SIZE_KEY = 'fogot-ai-image-size'
 const PROMPT_LANG_KEY = 'fogot-ai-prompt-lang'
 
 function loadModelsFromStorage(): ModelConfig[] {
@@ -89,6 +91,7 @@ export function setModels(models: ModelConfig[]) {
   config = { ...config, models }
   saveModelsToStorage(models)
   autoSelectChatModel()
+  autoSelectImageModel()
   emitConfig()
 }
 
@@ -128,6 +131,68 @@ export function setSelectedChatModelId(id: string) {
 export function getSelectedChatModel(): ModelConfig | undefined {
   const chatModels = getChatModels()
   return chatModels.find((m) => m.id === selectedChatModelId) ?? chatModels[0]
+}
+
+// ─── Selected Image Model Store ───────────────────────────────────
+
+let selectedImageModelId = localStorage.getItem(SELECTED_IMAGE_MODEL_KEY) ?? ''
+const imageModelListeners = new Set<() => void>()
+
+function autoSelectImageModel() {
+  const imageModels = config.models.filter((m) => m.type === 'image')
+  if (imageModels.length > 0 && !imageModels.find((m) => m.id === selectedImageModelId)) {
+    selectedImageModelId = imageModels[0].id
+    try { localStorage.setItem(SELECTED_IMAGE_MODEL_KEY, selectedImageModelId) } catch {}
+    imageModelListeners.forEach((fn) => fn())
+  }
+}
+
+autoSelectImageModel()
+
+export function useSelectedImageModelId(): string {
+  return useSyncExternalStore(
+    (listener) => {
+      imageModelListeners.add(listener)
+      return () => imageModelListeners.delete(listener)
+    },
+    () => selectedImageModelId,
+  )
+}
+
+export function setSelectedImageModelId(id: string) {
+  selectedImageModelId = id
+  try { localStorage.setItem(SELECTED_IMAGE_MODEL_KEY, id) } catch {}
+  imageModelListeners.forEach((fn) => fn())
+}
+
+export function getSelectedImageModel(): ModelConfig | undefined {
+  const imageModels = getImageModels()
+  return imageModels.find((m) => m.id === selectedImageModelId) ?? imageModels[0]
+}
+
+// ─── Image Size Store (composer-level, per generation) ────────────
+
+let imageSize = localStorage.getItem(IMAGE_SIZE_KEY) ?? ''
+const imageSizeListeners = new Set<() => void>()
+
+export function useImageSize(): string {
+  return useSyncExternalStore(
+    (listener) => {
+      imageSizeListeners.add(listener)
+      return () => imageSizeListeners.delete(listener)
+    },
+    () => imageSize,
+  )
+}
+
+export function setImageSize(size: string) {
+  imageSize = size
+  try { localStorage.setItem(IMAGE_SIZE_KEY, size) } catch {}
+  imageSizeListeners.forEach((fn) => fn())
+}
+
+export function getImageSize(): string {
+  return imageSize
 }
 
 // ─── Prompt Language Store ─────────────────────────────────────────
@@ -234,6 +299,32 @@ export function setAgentId(id: string) {
 
 export function getAgentId(): string {
   return agentId
+}
+
+// ─── Top-Level View Store ─────────────────────────────────────────
+
+export type AppView = 'chat' | 'assets'
+
+let appView: AppView = 'chat'
+const viewListeners = new Set<() => void>()
+
+export function useAppView(): AppView {
+  return useSyncExternalStore(
+    (listener) => {
+      viewListeners.add(listener)
+      return () => viewListeners.delete(listener)
+    },
+    () => appView,
+  )
+}
+
+export function getAppView(): AppView {
+  return appView
+}
+
+export function setAppView(view: AppView) {
+  appView = view
+  viewListeners.forEach((fn) => fn())
 }
 
 // ─── Active Plan Store ────────────────────────────────────────────
