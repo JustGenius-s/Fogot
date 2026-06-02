@@ -26,7 +26,14 @@ import { WriteFileToolUI } from '@/components/custom/write-file-tool-ui'
 import { EditFileToolUI } from '@/components/custom/edit-file-tool-ui'
 import { DelegateTaskToolUI } from '@/components/custom/delegate-task-tool-ui'
 import { ExitPlanModeToolUI } from '@/components/custom/create-plan-tool-ui'
-import { ReadFileToolUI } from '@/components/custom/read-file-tool-ui'
+import {
+  ReadFileToolUI,
+  ListFilesToolUI,
+  DeleteFileToolUI,
+  CopyFileToolUI,
+  MoveFileToolUI,
+  SearchFilesToolUI,
+} from '@/components/custom/file-ops-tool-ui'
 
 // ─── Transport Wrapper (attachments + context compression) ────────
 
@@ -374,6 +381,11 @@ const ChatProvider: FC<{
       <ReadFileToolUI />
       <WriteFileToolUI />
       <EditFileToolUI />
+      <ListFilesToolUI />
+      <DeleteFileToolUI />
+      <CopyFileToolUI />
+      <MoveFileToolUI />
+      <SearchFilesToolUI />
       <DelegateTaskToolUI />
       <ExitPlanModeToolUI />
       <TooltipProvider>
