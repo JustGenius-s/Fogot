@@ -10,6 +10,7 @@
 #include "core/crypto/crypto_core.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
+#include "core/io/resource_importer.h"
 #include "editor/file_system/editor_file_system.h"
 
 String AIToolRPC::write_file(const Dictionary &p_args) {
@@ -53,6 +54,13 @@ String AIToolRPC::write_file(const Dictionary &p_args) {
 
 	f.unref();
 	EditorFileSystem::get_singleton()->update_file(path);
+
+	// Trigger Godot resource import for file types that have a registered
+	// importer (images, audio, fonts, etc.).  Without this step the engine
+	// won't generate the .import metadata and load() will fail at runtime.
+	if (ResourceFormatImporter::get_singleton()->get_importer_by_file(path).is_valid()) {
+		EditorFileSystem::get_singleton()->reimport_files({ path });
+	}
 
 	return "Successfully wrote to " + path;
 }

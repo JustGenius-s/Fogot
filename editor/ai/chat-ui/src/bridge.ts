@@ -11,6 +11,7 @@ import { useSyncExternalStore } from 'react'
 // ─── Model & Config Types ─────────────────────────────────────────
 
 export type ModelType = 'chat' | 'image'
+export type ModelAuthMode = 'bearer' | 'none'
 
 export interface ModelConfig {
   id: string
@@ -19,6 +20,7 @@ export interface ModelConfig {
   apiKey: string
   apiEndpoint: string
   model: string
+  authMode?: ModelAuthMode
   maxTokens?: number
   temperature?: number
   contextWindow?: number

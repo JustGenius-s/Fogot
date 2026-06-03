@@ -11,6 +11,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  SelectRoot,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  SelectValue,
+} from "@/components/assistant-ui/select";
 import { SettingsIcon, PlusIcon, Trash2Icon, PencilIcon } from "lucide-react";
 import {
   useConfig,
@@ -18,6 +25,7 @@ import {
   usePromptLanguage,
   setPromptLang,
   type ModelConfig,
+  type ModelAuthMode,
   type ModelType,
 } from "@/bridge";
 
@@ -29,6 +37,7 @@ function emptyModel(type: ModelType = "chat"): ModelConfig {
     apiKey: "",
     apiEndpoint: "",
     model: "",
+    authMode: "bearer",
     maxTokens: 4096,
     temperature: 0.7,
   };
@@ -60,8 +69,14 @@ const ModelForm: FC<{
 }> = ({ model, isNew, onChange, onSave, onCancel }) => {
   const set = (patch: Partial<ModelConfig>) =>
     onChange({ ...model, ...patch });
-  const canSave =
-    model.name && model.apiKey && model.apiEndpoint && model.model;
+  const authMode = model.authMode ?? "bearer";
+  const requiresApiKey = model.type !== "image" || authMode !== "none";
+  const canSave = Boolean(
+    model.name &&
+      model.apiEndpoint &&
+      model.model &&
+      (!requiresApiKey || model.apiKey),
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -112,6 +127,32 @@ const ModelForm: FC<{
             onChange={(e) => set({ apiKey: e.target.value })}
           />
         </div>
+
+        {model.type === "image" && (
+          <div className="flex flex-col gap-1.5">
+            <label className={labelClass}>Auth Mode</label>
+            <SelectRoot
+              value={authMode}
+              onValueChange={(value) =>
+                set({ authMode: value as ModelAuthMode })
+              }
+            >
+              <SelectTrigger className="w-full rounded-lg">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="bearer">Bearer header</SelectItem>
+                <SelectItem value="none">
+                  No automatic auth header
+                </SelectItem>
+              </SelectContent>
+            </SelectRoot>
+            <p className="text-[10px] text-muted-foreground/60">
+              APIMart uses Bearer header. Use no automatic auth header when an
+              OpenAPI gateway or proxy handles authentication.
+            </p>
+          </div>
+        )}
 
         {model.type === "chat" && (
           <>
