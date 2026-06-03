@@ -60,10 +60,11 @@ export interface GenerateImageOptions {
   /** Quality tier: "auto" | "low" | "medium" | "high". */
   quality?: string
   /**
-   * Optional reference image for img2img. Accepts either a data URL
+   * Optional reference image(s) for img2img. Accepts either a data URL
    * (`data:image/...;base64,...`) or a project `res://` path.
+   * A single string or an array of strings (APIMart supports multiple).
    */
-  referenceImage?: string
+  referenceImage?: string | string[]
   /** Override the image model. Defaults to the first configured image model. */
   model?: ModelConfig
 }
@@ -231,9 +232,12 @@ async function pollOpenAITask(
 }
 
 async function callOpenAI(opts: GenerateImageOptions): Promise<ImageModelCall> {
-  const { prompt, size, resolution, quality, referenceImage } = opts
+  const { prompt, size, resolution, quality, referenceImage: refOpt } = opts
   const model = opts.model ?? getImageModels()[0]
   if (!model) return { error: 'No image model configured.' }
+
+  // OpenAI-compatible path uses only the first reference image.
+  const referenceImage = Array.isArray(refOpt) ? refOpt[0] : refOpt
 
   const { apiBase, apiUrl } = resolveOpenAIUrls(model.apiEndpoint)
 
@@ -455,10 +459,18 @@ async function callApimart(opts: GenerateImageOptions): Promise<ImageModelCall> 
     if (resolution?.trim()) body.resolution = resolution.trim()
     if (quality?.trim()) body.quality = quality.trim()
 
-    if (referenceImage) {
-      const ref = await readReferenceImage(referenceImage)
-      const imageUrl = await uploadApimartImage(base, model, ref)
-      body.image_urls = [{ url: imageUrl }]
+    const refs = referenceImage
+      ? (Array.isArray(referenceImage) ? referenceImage : [referenceImage])
+      : []
+    if (refs.length > 0) {
+      const uploaded = await Promise.all(
+        refs.map(async (r) => {
+          const ref = await readReferenceImage(r)
+          const url = await uploadApimartImage(base, model, ref)
+          return { url }
+        }),
+      )
+      body.image_urls = uploaded
     }
 
     const resp = await fetch(`${base}/images/generations`, {

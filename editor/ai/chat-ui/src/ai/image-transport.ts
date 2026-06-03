@@ -36,9 +36,10 @@ export function createImageChatTransport(): DirectChatTransport {
     async sendMessages({ messages }: any): Promise<ReadableStream> {
       const prompt = lastUserText(messages)
       const attachments = getAttachments()
-      // Prefer the data URL (works for both uploaded files and asset-library
-      // previews); fall back to the res:// path when no preview is available.
-      const referenceImage = attachments[0]?.dataUrl || attachments[0]?.path
+      const referenceImages = attachments
+        .map((a) => a.dataUrl || a.path)
+        .filter(Boolean)
+      const referenceImage = referenceImages.length > 0 ? referenceImages : undefined
       clearAttachments()
       const model = getSelectedImageModel()
 
