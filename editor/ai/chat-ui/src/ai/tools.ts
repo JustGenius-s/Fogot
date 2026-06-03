@@ -237,17 +237,27 @@ export const generateImage = tool({
     size: z
       .string()
       .optional()
-      .describe('Image size, e.g. "1024x1024" (default)'),
+      .describe('Aspect ratio (e.g. "16:9", "1:1") or pixel size (e.g. "1024x1024")'),
+    resolution: z
+      .string()
+      .optional()
+      .describe('Resolution tier: "1k", "2k", or "4k"'),
+    quality: z
+      .string()
+      .optional()
+      .describe('Quality: "auto", "low", "medium", or "high"'),
     reference_image: z
       .string()
       .optional()
       .describe('Optional reference image res:// path for img2img'),
   }),
-  execute: async ({ prompt, output, size, reference_image }) => {
+  execute: async ({ prompt, output, size, resolution, quality, reference_image }) => {
     const result = await generateImageAsset({
       prompt,
       output,
       size,
+      resolution,
+      quality,
       referenceImage: reference_image,
     })
     if (!result.success) {

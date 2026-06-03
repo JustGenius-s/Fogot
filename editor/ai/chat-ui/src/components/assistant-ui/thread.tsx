@@ -22,7 +22,7 @@ import {
 import { Image } from "@/components/assistant-ui/image";
 import { ViewToggle } from "@/components/assets/view-toggle";
 import { AssetPicker } from "@/components/assets/asset-picker";
-import { ImageSizeSelector } from "@/components/assets/image-size-selector";
+import { ImageGenSettings } from "@/components/assets/image-gen-settings";
 import { SaveToAssetsButton } from "@/components/assets/save-to-assets-button";
 import { GeneratingImageIndicator } from "@/components/assets/generating-indicator";
 import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
@@ -202,6 +202,7 @@ const ThreadSuggestionItem: FC = () => {
 const Composer: FC = () => {
   return (
     <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
+      <ImageGenSettings />
       <div data-slot="aui_composer-shell" className="flex w-full flex-col gap-2 rounded-(--composer-radius) border bg-background p-(--composer-padding) transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20"><PendingAttachments /><ComposerPrimitive.Input
                       placeholder="Send a message..."
                       className="aui-composer-input max-h-32 min-h-10 w-full resize-none bg-transparent px-1.75 py-1 text-sm outline-none placeholder:text-muted-foreground/80"
@@ -219,7 +220,6 @@ const ComposerAction: FC = () => {
       <div className="flex items-center gap-1">
         <ModelSelector />
         <ModeSelector />
-        <ImageSizeSelector />
       </div>
       <div className="flex items-center gap-1">
         <ContextDisplayRing side="top" />

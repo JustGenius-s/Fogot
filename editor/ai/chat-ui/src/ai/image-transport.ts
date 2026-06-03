@@ -8,7 +8,7 @@
  */
 
 import type { DirectChatTransport } from 'ai'
-import { getSelectedImageModel, getImageSize, getAttachments, clearAttachments } from '@/bridge'
+import { getSelectedImageModel, getImageSize, getImageResolution, getImageQuality, getAttachments, clearAttachments } from '@/bridge'
 import { generateImageData } from '@/lib/image-gen'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -65,6 +65,8 @@ export function createImageChatTransport(): DirectChatTransport {
               const result = await generateImageData({
                 prompt,
                 size: getImageSize(),
+                resolution: getImageResolution(),
+                quality: getImageQuality(),
                 referenceImage,
                 model,
               })

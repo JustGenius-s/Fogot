@@ -36,6 +36,8 @@ const MODELS_STORAGE_KEY = 'fogot-ai-models'
 const SELECTED_MODEL_KEY = 'fogot-ai-selected-model'
 const SELECTED_IMAGE_MODEL_KEY = 'fogot-ai-selected-image-model'
 const IMAGE_SIZE_KEY = 'fogot-ai-image-size'
+const IMAGE_RESOLUTION_KEY = 'fogot-ai-image-resolution'
+const IMAGE_QUALITY_KEY = 'fogot-ai-image-quality'
 const PROMPT_LANG_KEY = 'fogot-ai-prompt-lang'
 
 function loadModelsFromStorage(): ModelConfig[] {
@@ -172,7 +174,7 @@ export function getSelectedImageModel(): ModelConfig | undefined {
   return imageModels.find((m) => m.id === selectedImageModelId) ?? imageModels[0]
 }
 
-// ─── Image Size Store (composer-level, per generation) ────────────
+// ─── Image Generation Settings Stores ─────────────────────────────
 
 let imageSize = localStorage.getItem(IMAGE_SIZE_KEY) ?? ''
 const imageSizeListeners = new Set<() => void>()
@@ -195,6 +197,54 @@ export function setImageSize(size: string) {
 
 export function getImageSize(): string {
   return imageSize
+}
+
+// Resolution (1k / 2k / 4k)
+let imageResolution = localStorage.getItem(IMAGE_RESOLUTION_KEY) ?? ''
+const imageResolutionListeners = new Set<() => void>()
+
+export function useImageResolution(): string {
+  return useSyncExternalStore(
+    (listener) => {
+      imageResolutionListeners.add(listener)
+      return () => imageResolutionListeners.delete(listener)
+    },
+    () => imageResolution,
+  )
+}
+
+export function setImageResolution(res: string) {
+  imageResolution = res
+  try { localStorage.setItem(IMAGE_RESOLUTION_KEY, res) } catch {}
+  imageResolutionListeners.forEach((fn) => fn())
+}
+
+export function getImageResolution(): string {
+  return imageResolution
+}
+
+// Quality (auto / low / medium / high)
+let imageQuality = localStorage.getItem(IMAGE_QUALITY_KEY) ?? ''
+const imageQualityListeners = new Set<() => void>()
+
+export function useImageQuality(): string {
+  return useSyncExternalStore(
+    (listener) => {
+      imageQualityListeners.add(listener)
+      return () => imageQualityListeners.delete(listener)
+    },
+    () => imageQuality,
+  )
+}
+
+export function setImageQuality(q: string) {
+  imageQuality = q
+  try { localStorage.setItem(IMAGE_QUALITY_KEY, q) } catch {}
+  imageQualityListeners.forEach((fn) => fn())
+}
+
+export function getImageQuality(): string {
+  return imageQuality
 }
 
 // ─── Prompt Language Store ─────────────────────────────────────────
@@ -296,6 +346,13 @@ export function useAgentId(): string {
 
 export function setAgentId(id: string) {
   agentId = id
+  if (id === 'image') {
+    autoSelectImageModel()
+    imageModelListeners.forEach((fn) => fn())
+  } else {
+    autoSelectChatModel()
+    chatModelListeners.forEach((fn) => fn())
+  }
   agentListeners.forEach((fn) => fn())
 }
 

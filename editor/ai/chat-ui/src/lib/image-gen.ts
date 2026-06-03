@@ -53,7 +53,12 @@ export function detectMimeFromB64(b64: string): string {
 
 export interface GenerateImageOptions {
   prompt: string
+  /** Aspect ratio (e.g. "16:9") or pixel size (e.g. "1024x1024"). */
   size?: string
+  /** Resolution tier: "1k" | "2k" | "4k". APIMart-specific. */
+  resolution?: string
+  /** Quality tier: "auto" | "low" | "medium" | "high". */
+  quality?: string
   /**
    * Optional reference image for img2img. Accepts either a data URL
    * (`data:image/...;base64,...`) or a project `res://` path.
@@ -226,7 +231,7 @@ async function pollOpenAITask(
 }
 
 async function callOpenAI(opts: GenerateImageOptions): Promise<ImageModelCall> {
-  const { prompt, size, referenceImage } = opts
+  const { prompt, size, resolution, quality, referenceImage } = opts
   const model = opts.model ?? getImageModels()[0]
   if (!model) return { error: 'No image model configured.' }
 
@@ -249,7 +254,14 @@ async function callOpenAI(opts: GenerateImageOptions): Promise<ImageModelCall> {
 
   try {
     const body: Record<string, unknown> = { model: model.model, prompt, n: 1 }
-    if (size?.trim()) body.size = size.trim()
+
+    if (size?.trim()) {
+      const ratio = size.trim()
+      const res = resolution?.trim() || '1k'
+      const pixels = ratioToPixels(ratio, res)
+      body.size = pixels ?? ratio
+    }
+    if (quality?.trim()) body.quality = quality.trim()
 
     let refBase64 = ''
     let refMime = 'image/png'
@@ -316,11 +328,38 @@ function isApimartEndpoint(url: string): boolean {
   catch { return /apimart\.ai/i.test(url) }
 }
 
+/**
+ * APIMart ratio × resolution → pixel mapping (from official docs).
+ * Used both for APIMart (pixel fallback) and OpenAI-compatible (size conversion).
+ */
+const RATIO_PIXEL_MAP: Record<string, Record<string, string>> = {
+  '1:1':  { '1k': '1024x1024',  '2k': '2048x2048',  '4k': '2880x2880' },
+  '3:2':  { '1k': '1536x1024',  '2k': '2048x1360',  '4k': '3520x2336' },
+  '2:3':  { '1k': '1024x1536',  '2k': '1360x2048',  '4k': '2336x3520' },
+  '4:3':  { '1k': '1024x768',   '2k': '2048x1536',  '4k': '3312x2480' },
+  '3:4':  { '1k': '768x1024',   '2k': '1536x2048',  '4k': '2480x3312' },
+  '5:4':  { '1k': '1280x1024',  '2k': '2560x2048',  '4k': '3216x2576' },
+  '4:5':  { '1k': '1024x1280',  '2k': '2048x2560',  '4k': '2576x3216' },
+  '16:9': { '1k': '1536x864',   '2k': '2048x1152',  '4k': '3840x2160' },
+  '9:16': { '1k': '864x1536',   '2k': '1152x2048',  '4k': '2160x3840' },
+  '2:1':  { '1k': '2048x1024',  '2k': '2688x1344',  '4k': '3840x1920' },
+  '1:2':  { '1k': '1024x2048',  '2k': '1344x2688',  '4k': '1920x3840' },
+  '3:1':  { '1k': '1536x512',   '2k': '3072x1024',  '4k': '3840x1280' },
+  '1:3':  { '1k': '512x1536',   '2k': '1024x3072',  '4k': '1280x3840' },
+  '21:9': { '1k': '2016x864',   '2k': '2688x1152',  '4k': '3840x1648' },
+  '9:21': { '1k': '864x2016',   '2k': '1152x2688',  '4k': '1648x3840' },
+}
+
+/** Convert an aspect ratio + resolution tier to a pixel size string. */
+function ratioToPixels(ratio: string, resolution: string): string | undefined {
+  return RATIO_PIXEL_MAP[ratio]?.[resolution]
+}
+
 function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b)
 }
 
-/** Convert `2048x1152` → `{ size: "16:9", resolution: "2k" }`. */
+/** Legacy: convert pixel size `2048x1152` → ratio + resolution on `body`. */
 function normalizeApimartSize(body: Record<string, unknown>): void {
   if (typeof body.size !== 'string') return
   const m = body.size.match(/^(\d+)x(\d+)$/)
@@ -331,8 +370,10 @@ function normalizeApimartSize(body: Record<string, unknown>): void {
   const d = gcd(w, h)
   body.size = `${w / d}:${h / d}`
 
-  const longest = Math.max(w, h)
-  body.resolution = longest <= 1024 ? '1k' : longest <= 2048 ? '2k' : '4k'
+  if (!body.resolution) {
+    const longest = Math.max(w, h)
+    body.resolution = longest <= 1024 ? '1k' : longest <= 2048 ? '2k' : '4k'
+  }
 }
 
 function base64ToBlob(b64: string, mime: string): Blob {
@@ -399,7 +440,7 @@ async function pollApimartTask(
 }
 
 async function callApimart(opts: GenerateImageOptions): Promise<ImageModelCall> {
-  const { prompt, size, referenceImage } = opts
+  const { prompt, size, resolution, quality, referenceImage } = opts
   const model = opts.model ?? getImageModels()[0]
   if (!model) return { error: 'No image model configured.' }
 
@@ -411,6 +452,8 @@ async function callApimart(opts: GenerateImageOptions): Promise<ImageModelCall> 
       body.size = size.trim()
       normalizeApimartSize(body)
     }
+    if (resolution?.trim()) body.resolution = resolution.trim()
+    if (quality?.trim()) body.quality = quality.trim()
 
     if (referenceImage) {
       const ref = await readReferenceImage(referenceImage)

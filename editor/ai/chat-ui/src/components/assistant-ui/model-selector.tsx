@@ -166,8 +166,8 @@ const ModelSelectorImpl: FC<ModelSelectorProps> = ({
   );
   const value = isImageMode ? imageModelId : chatModelId;
   const onValueChange = isImageMode
-    ? setSelectedImageModelId
-    : setSelectedChatModelId;
+    ? (v: string) => { if (v) setSelectedImageModelId(v); }
+    : (v: string) => { if (v) setSelectedChatModelId(v); };
 
   if (models.length === 0) {
     return (
@@ -177,7 +177,19 @@ const ModelSelectorImpl: FC<ModelSelectorProps> = ({
     );
   }
 
-  if (models.length === 1) return null;
+  if (models.length === 1) {
+    const m = models[0];
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground">
+        {m.type === "image" ? (
+          <ImageIcon className="size-3.5" />
+        ) : (
+          <BotIcon className="size-3.5" />
+        )}
+        <span className="truncate">{m.name}</span>
+      </span>
+    );
+  }
 
   return (
     <ModelSelectorRoot models={models} value={value} onValueChange={onValueChange}>
