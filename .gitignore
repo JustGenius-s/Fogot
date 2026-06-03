@@ -119,9 +119,11 @@ dist/
 # ccls
 .ccls-cache/
 
-# clangd
+# clangd / CodeWhale
 .clangd/
 .cache/
+.codewhale/
+.deepseek/
 
 # CLion
 cmake-build-debug

@@ -90,12 +90,16 @@ async function callImageModel(opts: GenerateImageOptions): Promise<ImageModelCal
 
     if (referenceImage) {
       // Reference images may arrive as a data URL (uploaded files / asset
-      // picker previews) or as a project res:// path. Avoid read_file for data
-      // URLs — that path isn't a real file and would fail.
-      const refBase64 = referenceImage.startsWith('data:')
-        ? (referenceImage.split(',')[1] ?? '')
-        : await bridgeRPC('read_file', { path: referenceImage, binary: true })
-      body.image = refBase64
+      // picker previews) or as a project res:// path. The API expects a valid
+      // URL — keep the full data:…;base64,… URL intact when we already have
+      // one; for res:// paths, read the raw base64 and wrap it in a data URL.
+      if (referenceImage.startsWith('data:')) {
+        body.image = referenceImage
+      } else {
+        const raw = await bridgeRPC('read_file', { path: referenceImage, binary: true })
+        const mime = getMimeFromPath(referenceImage)
+        body.image = `data:${mime};base64,${raw}`
+      }
     }
 
     const url = `${imgModel.apiEndpoint.replace(/\/+$/, '')}/images/generations`
