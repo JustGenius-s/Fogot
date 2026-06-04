@@ -21,6 +21,7 @@ import {
 } from "@/components/assistant-ui/tool-group";
 import { Image } from "@/components/assistant-ui/image";
 import { SkillPopover } from "@/components/assistant-ui/skill-popover";
+import { DirectiveText } from "@/components/assistant-ui/directive-text";
 import { ViewToggle } from "@/components/assets/view-toggle";
 import { AssetPicker } from "@/components/assets/asset-picker";
 import { ImageGenSettings } from "@/components/assets/image-gen-settings";
@@ -430,7 +431,7 @@ const UserMessage: FC = () => {
 
       <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
         <div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground empty:hidden">
-          <MessagePrimitive.Parts />
+          <MessagePrimitive.Parts components={{ Text: DirectiveText }} />
         </div>
         <div className="aui-user-action-bar-wrapper absolute inset-s-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden rtl:translate-x-full">
           <UserActionBar />

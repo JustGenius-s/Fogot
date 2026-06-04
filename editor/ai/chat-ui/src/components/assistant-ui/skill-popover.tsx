@@ -3,8 +3,8 @@
  */
 
 import { useMemo, type FC } from 'react'
-import { ComposerPrimitive } from '@assistant-ui/react'
-import type { Unstable_TriggerAdapter, Unstable_TriggerItem } from '@assistant-ui/core'
+import { ComposerPrimitive, unstable_defaultDirectiveFormatter } from '@assistant-ui/react'
+import type { Unstable_TriggerAdapter } from '@assistant-ui/core'
 import { useAvailableSkills, addInvokedSkill } from '@/bridge'
 import { SparklesIcon, FolderOpenIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -13,10 +13,12 @@ export const SkillPopover: FC = () => {
   const skills = useAvailableSkills()
   const adapter = useMemo<Unstable_TriggerAdapter>(
     () => ({
-      categories: () => [
-        { id: 'builtin', label: 'Built-in' },
-        { id: 'project', label: 'Project' },
-      ],
+      categories: () => {
+        const cats: { id: string; label: string }[] = []
+        if (skills.some((s) => s.source === 'builtin')) cats.push({ id: 'builtin', label: 'Built-in' })
+        if (skills.some((s) => s.source === 'project')) cats.push({ id: 'project', label: 'Project' })
+        return cats
+      },
       categoryItems: (categoryId: string) =>
         skills.filter((s) => s.source === categoryId).map((s) => ({ id: s.id, type: 'skill', label: s.name, description: s.description })),
       search: (query: string) => {
@@ -42,9 +44,9 @@ export const SkillPopover: FC = () => {
         'rounded-lg border bg-popover text-popover-foreground shadow-lg',
       )}
     >
-      <ComposerPrimitive.Unstable_TriggerPopover.Action
-        removeOnExecute
-        onExecute={(item) => {
+      <ComposerPrimitive.Unstable_TriggerPopover.Directive
+        formatter={unstable_defaultDirectiveFormatter}
+        onInserted={(item) => {
           const s = skillMap.get(item.id)
           if (!s) return
           addInvokedSkill(s.id)

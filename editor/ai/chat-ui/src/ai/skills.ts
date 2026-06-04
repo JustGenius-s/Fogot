@@ -220,8 +220,19 @@ export function getBuiltinSkills(lang: 'en' | 'zh' = 'en'): SkillConfig[] {
 export async function loadProjectSkills(): Promise<SkillConfig[]> {
   try {
     const raw = await bridgeRPC('list_files', { path: 'res://.agents/skills' })
-    const entries: string[] = typeof raw === 'string' ? JSON.parse(raw) : raw
-    const dirs = entries.filter((e: string) => !e.includes('.') && e !== '.' && e !== '..')
+    // list_files returns a plain-text tree, e.g.:
+    //   res://.agents/skills
+    //     design-taste-frontend/
+    //     my-skill/
+    const lines = raw.split('\n')
+    const dirs: string[] = []
+    for (const line of lines) {
+      const trimmed = line.trimStart()  // strip leading spaces
+      // Directory entries end with "/", files don't
+      if (trimmed.endsWith('/')) {
+        dirs.push(trimmed.slice(0, -1))  // strip trailing "/"
+      }
+    }
 
     const skills: SkillConfig[] = []
     for (const dir of dirs) {
