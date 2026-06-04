@@ -11,7 +11,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Thread } from '@/components/assistant-ui/thread'
 import { ModelSettings } from '@/components/assistant-ui/model-settings'
-import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getImageModels, getAttachments, clearAttachments, setActivePlan, usePromptLanguage, useAppView } from '@/bridge'
+import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getImageModels, getAttachments, clearAttachments, setActivePlan, usePromptLanguage, useAppView, getAvailableSkills } from '@/bridge'
 import { AssetMode } from '@/components/assets/asset-mode'
 import { allTools, getToolsForAgent } from '@/ai/tools'
 import { getDefaultSystemPrompt, getPlanSystemPrompt, getAgent } from '@/ai/agents'
@@ -28,6 +28,7 @@ import { WriteFileToolUI } from '@/components/custom/write-file-tool-ui'
 import { EditFileToolUI } from '@/components/custom/edit-file-tool-ui'
 import { DelegateTaskToolUI } from '@/components/custom/delegate-task-tool-ui'
 import { ExitPlanModeToolUI } from '@/components/custom/create-plan-tool-ui'
+import { SkillToolUI } from '@/components/custom/skill-tool-ui'
 import {
   ReadFileToolUI,
   ListFilesToolUI,
@@ -36,6 +37,8 @@ import {
   MoveFileToolUI,
   SearchFilesToolUI,
 } from '@/components/custom/file-ops-tool-ui'
+import { getBuiltinSkills, loadProjectSkills } from '@/ai/skills'
+import { setAvailableSkills, clearInvokedSkills } from '@/bridge'
 
 // ─── Transport Wrapper (attachments + context compression) ────────
 
@@ -390,6 +393,7 @@ const ChatProvider: FC<{
       <SearchFilesToolUI />
       <DelegateTaskToolUI />
       <ExitPlanModeToolUI />
+      <SkillToolUI />
       <TooltipProvider>
         <MainView status={status} />
       </TooltipProvider>
@@ -424,6 +428,16 @@ export default function App() {
 
   const promptLang = usePromptLanguage()
 
+  useEffect(() => {
+    async function init() {
+      const builtins = getBuiltinSkills(promptLang)
+      const project = await loadProjectSkills()
+      setAvailableSkills([...builtins, ...project])
+      clearInvokedSkills()
+    }
+    init()
+  }, [promptLang])
+
   const isConfigured = !!(chatModel?.apiKey && chatModel?.apiEndpoint && chatModel?.model)
 
   const transport = useMemo(() => {
@@ -454,11 +468,11 @@ export default function App() {
       maxSteps = 15
     } else if (agentConfig?.allowedTools) {
       tools = getToolsForAgent(agentConfig.allowedTools)
-      instructions = agentConfig.systemPrompt ?? getDefaultSystemPrompt()
+      instructions = agentConfig.systemPrompt ?? getDefaultSystemPrompt(getAvailableSkills())
       maxSteps = agentConfig.maxSteps ?? 25
     } else {
       tools = allTools
-      instructions = agentConfig?.systemPrompt ?? getDefaultSystemPrompt()
+      instructions = agentConfig?.systemPrompt ?? getDefaultSystemPrompt(getAvailableSkills())
       maxSteps = agentConfig?.maxSteps ?? 25
     }
 

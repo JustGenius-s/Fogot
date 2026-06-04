@@ -384,6 +384,8 @@ export const updatePlan = tool({
 
 import { delegateTask } from './delegate-tool'
 
+import { useSkill } from './skill-tool'
+
 // ─── Tool Collections ─────────────────────────────────────────────
 
 export const allTools = {
@@ -404,6 +406,7 @@ export const allTools = {
   exit_plan_mode: exitPlanMode,
   update_plan: updatePlan,
   delegate_task: delegateTask,
+  use_skill: useSkill,
 } as const
 
 export type ToolName = keyof typeof allTools

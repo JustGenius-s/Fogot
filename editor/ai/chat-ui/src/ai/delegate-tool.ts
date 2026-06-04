@@ -10,7 +10,8 @@
 import { tool, ToolLoopAgent, stepCountIs, readUIMessageStream } from 'ai'
 import type { LanguageModel, ToolSet } from 'ai'
 import { z } from 'zod'
-import { getSubAgent, getPromptLanguage } from './agents'
+import { getSubAgent } from './agents'
+import { getPromptLanguage } from '@/bridge'
 
 // ─── Injected dependencies ────────────────────────────────────────
 

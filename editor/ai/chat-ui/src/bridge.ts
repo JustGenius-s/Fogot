@@ -249,7 +249,7 @@ export function getImageQuality(): string {
 
 // ─── Prompt Language Store ─────────────────────────────────────────
 
-import { setPromptLanguage as _setPromptLang, type PromptLanguage } from '@/ai/agents'
+export type PromptLanguage = 'zh' | 'en'
 
 function loadPromptLang(): PromptLanguage {
   try {
@@ -260,7 +260,6 @@ function loadPromptLang(): PromptLanguage {
 }
 
 let promptLang: PromptLanguage = loadPromptLang()
-_setPromptLang(promptLang) // sync on startup
 
 const promptLangListeners = new Set<() => void>()
 
@@ -278,9 +277,10 @@ export function getPromptLang(): PromptLanguage {
   return promptLang
 }
 
+export const getPromptLanguage = getPromptLang
+
 export function setPromptLang(lang: PromptLanguage) {
   promptLang = lang
-  _setPromptLang(lang)
   try { localStorage.setItem(PROMPT_LANG_KEY, lang) } catch {}
   promptLangListeners.forEach((fn) => fn())
 }
@@ -328,6 +328,41 @@ export function clearAttachments() {
 export function getAttachments(): PendingAttachment[] {
   return pendingAttachments
 }
+
+// ─── Available Skills Store ───────────────────────────────────────
+
+interface SkillData {
+  id: string
+  name: string
+  description: string
+  content: string
+  source: string
+}
+
+let availableSkills: SkillData[] = []
+const skillsListeners = new Set<() => void>()
+
+export function useAvailableSkills(): SkillData[] {
+  return useSyncExternalStore(
+    (listener) => { skillsListeners.add(listener); return () => skillsListeners.delete(listener) },
+    () => availableSkills,
+  )
+}
+
+export function setAvailableSkills(skills: SkillData[]) {
+  availableSkills = skills
+  skillsListeners.forEach((fn) => fn())
+}
+
+export function getAvailableSkills(): SkillData[] {
+  return availableSkills
+}
+
+const invokedSkillIds = new Set<string>()
+
+export function addInvokedSkill(id: string) { invokedSkillIds.add(id) }
+export function hasInvokedSkill(id: string): boolean { return invokedSkillIds.has(id) }
+export function clearInvokedSkills() { invokedSkillIds.clear() }
 
 // ─── Agent Selection Store ────────────────────────────────────────
 

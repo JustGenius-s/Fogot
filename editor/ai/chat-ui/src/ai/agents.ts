@@ -3,19 +3,13 @@
  * Supports Chinese (zh) and English (en) bilingual prompts.
  */
 
+import type { PromptLanguage } from '@/bridge'
+import { getPromptLanguage, getAvailableSkills } from '@/bridge'
+import { formatSkillListing } from './skills'
+
 // ─── Language Setting ─────────────────────────────────────────────
 
-export type PromptLanguage = 'zh' | 'en'
-
-let _promptLanguage: PromptLanguage = 'zh'
-
-export function setPromptLanguage(lang: PromptLanguage) {
-  _promptLanguage = lang
-}
-
-export function getPromptLanguage(): PromptLanguage {
-  return _promptLanguage
-}
+export type { PromptLanguage }
 
 // ─── Agent Config Interface ───────────────────────────────────────
 
@@ -386,7 +380,7 @@ GDScript 约定：
 // ─── Prompt Builder ───────────────────────────────────────────────
 
 function getLocale() {
-  return _promptLanguage === 'zh' ? ZH : EN
+  return getPromptLanguage() === 'zh' ? ZH : EN
 }
 
 function buildSubAgentSection(): string {
@@ -450,8 +444,12 @@ export function getSubAgent(id: string): AgentConfig {
 // ─── System Prompts (dynamic, language-aware) ─────────────────────
 
 /** Main agent system prompt — call this to get the current language version */
-export function getDefaultSystemPrompt(): string {
-  return buildDefaultSystemPrompt()
+export function getDefaultSystemPrompt(skills?: { id: string; description: string }[]): string {
+  let prompt = buildDefaultSystemPrompt()
+  if (skills?.length) {
+    prompt += '\n\n' + formatSkillListing(skills, getPromptLanguage())
+  }
+  return prompt
 }
 
 /** Legacy export for backwards compatibility */
@@ -459,7 +457,7 @@ export const defaultSystemPrompt = buildDefaultSystemPrompt()
 
 export function getPlanSystemPrompt(): string {
   const l = getLocale()
-  if (_promptLanguage === 'zh') {
+  if (getPromptLanguage() === 'zh') {
     return [
       '你是 Fogot 2D 游戏编辑器的规划助手。',
       '计划模式已激活。你不能进行任何编辑或执行代码——只允许读取文件和编写计划。',
