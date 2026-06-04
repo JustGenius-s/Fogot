@@ -69,7 +69,7 @@ void AIChatDock::_js_call(const String &p_method, const Vector<String> &p_args) 
 	web_view->evaluate_js(script);
 }
 
-// ─── JS → C++ message handler ────────────────────────────────────
+// ─── JS �?C++ message handler ────────────────────────────────────
 
 void AIChatDock::_on_js_message(const String &p_action, const Dictionary &p_params) {
 	if (p_action == "callTool") {
@@ -148,7 +148,7 @@ void AIChatDock::_load_chat_html() {
 		if (dev_url == "1" || dev_url.is_empty()) {
 			dev_url = "http://127.0.0.1:5173";
 		}
-		print_line("AIChatDock: Dev mode — loading from " + dev_url);
+		print_line("AIChatDock: Dev mode �?loading from " + dev_url);
 		web_view->load_url(dev_url);
 		return;
 	}
@@ -253,6 +253,22 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 		result = AIToolRPC::execute_command(args);
 	} else if (p_tool_name == "get_class_docs") {
 		result = AIToolRPC::get_class_docs(args);
+	} else if (p_tool_name == "scene_list_nodes") {
+		result = AIToolRPC::scene_list_nodes(args);
+	} else if (p_tool_name == "scene_get_node") {
+		result = AIToolRPC::scene_get_node(args);
+	} else if (p_tool_name == "scene_create_node") {
+		result = AIToolRPC::scene_create_node(args);
+	} else if (p_tool_name == "scene_delete_node") {
+		result = AIToolRPC::scene_delete_node(args);
+	} else if (p_tool_name == "scene_set_property") {
+		result = AIToolRPC::scene_set_property(args);
+	} else if (p_tool_name == "scene_reparent_node") {
+		result = AIToolRPC::scene_reparent_node(args);
+	} else if (p_tool_name == "scene_move_child") {
+		result = AIToolRPC::scene_move_child(args);
+	} else if (p_tool_name == "scene_get_class_docs") {
+		result = AIToolRPC::scene_get_class_docs(args);
 	} else {
 		result = "Error: Unknown tool '" + p_tool_name + "'";
 		is_error = true;

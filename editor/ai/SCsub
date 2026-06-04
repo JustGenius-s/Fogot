@@ -7,6 +7,7 @@ Import("env")
 
 env.add_source_files(env.editor_sources, "docks/*.cpp")
 env.add_source_files(env.editor_sources, "tools/*.cpp")
+env.add_source_files(env.editor_sources, "shared/*.cpp")
 
 # WebView support.
 env.add_source_files(env.editor_sources, "web/*.cpp")

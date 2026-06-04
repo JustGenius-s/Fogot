@@ -46,4 +46,36 @@ String execute_command(const Dictionary &p_args);
 /// Supports listing all classes, brief overviews, and full API details.
 String get_class_docs(const Dictionary &p_args);
 
+/// List the current scene node tree as JSON.
+/// Args: path (optional) — subtree root, defaults to scene root.
+String scene_list_nodes(const Dictionary &p_args);
+
+/// Get detailed info about a node (properties, groups, signals, script).
+/// Args: path — node path relative to scene root.
+String scene_get_node(const Dictionary &p_args);
+
+/// Create a new node in the scene (undoable).
+/// Args: parent_path, node_type (class name), node_name.
+String scene_create_node(const Dictionary &p_args);
+
+/// Delete a node from the scene (undoable).
+/// Args: path — node path relative to scene root.
+String scene_delete_node(const Dictionary &p_args);
+
+/// Set a property on a node (undoable).
+/// Args: path, property (name), value (JSON-encoded).
+String scene_set_property(const Dictionary &p_args);
+
+/// Reparent a node to a different parent (undoable).
+/// Args: path, new_parent_path.
+String scene_reparent_node(const Dictionary &p_args);
+
+/// Move a node within its parent's child order.
+/// Args: path, to_position (int index).
+String scene_move_child(const Dictionary &p_args);
+
+/// Get class docs for a scene node (convenience, auto-detects class).
+/// Args: path — node path relative to scene root.
+String scene_get_class_docs(const Dictionary &p_args);
+
 } // namespace AIToolRPC

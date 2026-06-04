@@ -433,7 +433,7 @@ function getSubAgents(): AgentConfig[] {
   ]
 }
 
-/** Exported for delegate-tool.ts */
+/** Exported for tools/delegate.ts */
 export const subAgents: AgentConfig[] = getSubAgents()
 
 export function getSubAgent(id: string): AgentConfig {

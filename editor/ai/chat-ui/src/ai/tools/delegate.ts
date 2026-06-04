@@ -2,15 +2,13 @@
  * Sub-agent delegation tool.
  *
  * Wraps a child ToolLoopAgent as a standard tool so the parent agent
- * can autonomously decide to delegate work. Uses an async generator
- * to stream sub-agent progress to the UI, and `toModelOutput` to
- * compress the result into a summary for the parent's context window.
+ * can autonomously decide to delegate work.
  */
 
 import { tool, ToolLoopAgent, stepCountIs, readUIMessageStream } from 'ai'
 import type { LanguageModel, ToolSet } from 'ai'
 import { z } from 'zod'
-import { getSubAgent } from './agents'
+import { getSubAgent } from '../agents'
 import { getPromptLanguage } from '@/bridge'
 
 // ─── Injected dependencies ────────────────────────────────────────
@@ -18,11 +16,6 @@ import { getPromptLanguage } from '@/bridge'
 let _model: LanguageModel | null = null
 let _getTools: (allowed?: string[]) => ToolSet = () => ({})
 
-/**
- * Must be called before the tool is used.
- * Injects the configured LLM model and tool-getter so sub-agents
- * can make API calls and access project tools.
- */
 export function configureDelegateTool(
   model: LanguageModel,
   getTools: (allowed?: string[]) => ToolSet,
@@ -30,8 +23,6 @@ export function configureDelegateTool(
   _model = model
   _getTools = getTools
 }
-
-// ─── Tool definition ─────────────────────────────────────────────
 
 export const delegateTask = tool({
   description: [
@@ -50,12 +41,9 @@ export const delegateTask = tool({
     task: z.string().describe(
       'Detailed, self-contained task description. The sub-agent cannot see your conversation. Include file paths, context, and what specifically needs to happen.',
     ),
-    agent_type: z
-      .string()
-      .optional()
-      .describe(
-        'Sub-agent type: "explore" (read-only search/analysis) or "coder" (implement changes). Defaults to "explore".',
-      ),
+    agent_type: z.string().optional().describe(
+      'Sub-agent type: "explore" (read-only search/analysis) or "coder" (implement changes). Defaults to "explore".',
+    ),
   }),
 
   execute: async function* ({ task, agent_type }, { abortSignal }) {

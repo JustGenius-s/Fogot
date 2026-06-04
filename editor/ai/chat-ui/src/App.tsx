@@ -16,7 +16,7 @@ import { AssetMode } from '@/components/assets/asset-mode'
 import { allTools, getToolsForAgent } from '@/ai/tools'
 import { getDefaultSystemPrompt, getPlanSystemPrompt, getAgent } from '@/ai/agents'
 import { createImageChatTransport } from '@/ai/image-transport'
-import { configureDelegateTool } from '@/ai/delegate-tool'
+import { configureDelegateTool } from '@/ai/tools'
 import {
   updateUsageSnapshot,
   getLastUsage,
