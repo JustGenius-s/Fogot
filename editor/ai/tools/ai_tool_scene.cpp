@@ -8,6 +8,7 @@
 #include "ai_tool_rpc.h"
 #include "../shared/ai_shared_utils.h"
 
+#include "core/io/file_access.h"
 #include "core/io/json.h"
 #include "core/object/class_db.h"
 #include "editor/doc/editor_help.h"
@@ -388,4 +389,50 @@ String AIToolRPC::scene_get_class_docs(const Dictionary &p_args) {
 	result["signals"] = signals;
 
 	return JSON::stringify(result);
+}
+
+// --- scene_run ---
+
+String AIToolRPC::scene_run(const Dictionary &p_args) {
+	String scene_path = p_args.get("scene_path", "");
+
+	EditorInterface *ei = EditorInterface::get_singleton();
+
+	if (scene_path.is_empty()) {
+		Node *root = ei->get_edited_scene_root();
+		if (!root) {
+			return "Error: No scene is currently open.";
+		}
+		if (root->get_scene_file_path().is_empty()) {
+			return "Error: Current scene has not been saved yet. Save the scene first.";
+		}
+		scene_path = root->get_scene_file_path();
+	}
+
+	if (!FileAccess::exists(scene_path)) {
+		return "Error: Scene file not found at '" + scene_path + "'.";
+	}
+
+	bool was_running = ei->is_playing_scene();
+	String old_scene = ei->get_playing_scene();
+
+	ei->play_custom_scene(scene_path);
+
+	Dictionary result;
+	result["action"] = was_running && old_scene == scene_path ? "reloaded" : "started";
+	result["scene_path"] = scene_path;
+	return JSON::stringify(result);
+}
+
+// --- scene_screenshot ---
+
+String AIToolRPC::scene_screenshot(const Dictionary &p_args) {
+	EditorInterface *ei = EditorInterface::get_singleton();
+	if (!ei->is_playing_scene()) {
+		return "Error: No scene is currently running. Start a scene with run_scene first.";
+	}
+
+	// The actual async screenshot request is handled in AIChatDock.
+	// This function just validates the preconditions.
+	return "OK";
 }

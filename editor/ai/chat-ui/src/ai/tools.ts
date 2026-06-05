@@ -35,6 +35,8 @@ export {
   sceneReparentNode,
   sceneMoveChild,
   sceneGetClassDocs,
+  sceneRun,
+  sceneScreenshot,
 } from './tools/scene'
 
 export {
@@ -85,6 +87,8 @@ import {
   sceneReparentNode,
   sceneMoveChild,
   sceneGetClassDocs,
+  sceneRun,
+  sceneScreenshot,
 } from './tools/scene'
 
 import {
@@ -132,6 +136,8 @@ export const allTools = {
   scene_reparent_node: sceneReparentNode,
   scene_move_child: sceneMoveChild,
   scene_get_class_docs: sceneGetClassDocs,
+  scene_run: sceneRun,
+  scene_screenshot: sceneScreenshot,
 
   // Image operations
   crop_image: cropImage,

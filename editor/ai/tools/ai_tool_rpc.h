@@ -78,4 +78,13 @@ String scene_move_child(const Dictionary &p_args);
 /// Args: path — node path relative to scene root.
 String scene_get_class_docs(const Dictionary &p_args);
 
+/// Run a scene (starts a new game process, or re-runs the current scene).
+/// Args: scene_path (optional) — path to the .tscn/.scn file. Defaults to the currently open scene.
+String scene_run(const Dictionary &p_args);
+
+/// Request a screenshot of the currently running scene.
+/// Args: output_path (optional) — where to save the PNG. Defaults to a temp path.
+/// NOTE: This tool is async — the result is sent when the game responds.
+String scene_screenshot(const Dictionary &p_args);
+
 } // namespace AIToolRPC

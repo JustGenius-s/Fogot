@@ -28,7 +28,7 @@ export interface AgentConfig {
 // ─── Prompt Modules (Chinese) ─────────────────────────────────────
 
 const ZH = {
-  identity: `你是 Fogot 2D 游戏编辑器（基于 Godot 4.x）的编码代理。
+  identity: `你是 Fogot 2D 游戏编辑器（基于 Godot 4.7）的编码代理。
 完整地完成任务——不要过度设计，但也不要做一半就停。
 你可以使用工具来读取、写入和搜索用户 Godot 项目中的文件（res:// 路径）。`,
 

@@ -8,18 +8,21 @@
 #include "ai_chat_dock.h"
 
 #include "core/crypto/crypto_core.h"
+#include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/json.h"
 #include "core/io/resource_loader.h"
 #include "core/object/callable_mp.h"
 #include "core/object/script_language.h"
 #include "core/os/os.h"
+#include "editor/ai/shared/ai_shared_utils.h"
 #include "editor/ai/tools/ai_tool_rpc.h"
 #include "editor/ai/web/editor_web_view.h"
 #include "editor/debugger/editor_debugger_node.h"
 #include "editor/debugger/script_editor_debugger.h"
 #include "editor/editor_interface.h"
 #include "editor/gui/editor_file_dialog.h"
+#include "editor/run/editor_run.h"
 
 void AIChatDock::_bind_methods() {
 }
@@ -269,6 +272,29 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 		result = AIToolRPC::scene_move_child(args);
 	} else if (p_tool_name == "scene_get_class_docs") {
 		result = AIToolRPC::scene_get_class_docs(args);
+	} else if (p_tool_name == "scene_run") {
+		result = AIToolRPC::scene_run(args);
+	} else if (p_tool_name == "scene_screenshot") {
+		String check = AIToolRPC::scene_screenshot(args);
+		if (check.begins_with("Error:")) {
+			_js_call("onToolResult", {
+					"'" + _js_escape(p_request_id) + "'",
+					"'" + _js_escape(check) + "'",
+					"true",
+			});
+		} else {
+			String output_path = args.get("output_path", "");
+			Callable cb = callable_mp(this, &AIChatDock::_on_screenshot_result).bind(p_request_id, output_path);
+			bool ok = EditorRun::request_screenshot(cb);
+			if (!ok) {
+				_js_call("onToolResult", {
+						"'" + _js_escape(p_request_id) + "'",
+						"'Error: Failed to request screenshot. Ensure the game window is embedded in the editor.'",
+						"true",
+				});
+			}
+		}
+		return; // Result sent via callback or already sent for errors.
 	} else {
 		result = "Error: Unknown tool '" + p_tool_name + "'";
 		is_error = true;
@@ -312,6 +338,41 @@ void AIChatDock::_flush_debugger_errors() {
 	pending_debugger_errors.clear();
 
 	_js_call("onDebuggerErrors", { "'" + _js_escape(json_array) + "'" });
+}
+
+// ─── Screenshot callback ───────────────────────────────────────
+
+void AIChatDock::_on_screenshot_result(const String &p_request_id, const String &p_output_path, int64_t p_w, int64_t p_h, const String &p_temp_path, const Rect2i &p_rect) {
+	String result;
+	bool is_error = false;
+
+	if (!p_output_path.is_empty()) {
+		String safe_output = p_output_path;
+		normalize_project_path(safe_output);
+		Error err = DirAccess::copy_absolute(p_temp_path, safe_output);
+		if (err != OK) {
+			result = "Error: Failed to copy screenshot to '" + safe_output + "'.";
+			is_error = true;
+		} else {
+			Dictionary d;
+			d["width"] = p_w;
+			d["height"] = p_h;
+			d["path"] = safe_output;
+			result = JSON::stringify(d);
+		}
+	} else {
+		Dictionary d;
+		d["width"] = p_w;
+		d["height"] = p_h;
+		d["path"] = p_temp_path;
+		result = JSON::stringify(d);
+	}
+
+	_js_call("onToolResult", {
+			"'" + _js_escape(p_request_id) + "'",
+			"'" + _js_escape(result) + "'",
+			is_error ? "true" : "false",
+	});
 }
 
 // ─── Constructor ──────────────────────────────────────────────────
