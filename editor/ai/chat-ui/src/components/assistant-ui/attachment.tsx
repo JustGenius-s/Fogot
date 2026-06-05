@@ -192,8 +192,31 @@ export const PendingAttachments: FC = () => {
   const pendingAttachments = usePendingAttachments();
   if (pendingAttachments.length === 0) return null;
 
+  // Register pending attachments as composer attachments so they appear in messages
+  const SyncAttachments: FC = () => {
+    const aui = useAui();
+    const composer = aui.composer();
+    const addedRef = useRef(new Set<string>());
+
+    useEffect(() => {
+      for (const att of pendingAttachments) {
+        if (addedRef.current.has(att.path)) continue;
+        addedRef.current.add(att.path);
+        composer.addAttachment({
+          id: att.path,
+          type: 'image',
+          name: att.path.split('/').pop() || att.path,
+          content: [{ type: 'image' as const, image: att.dataUrl }],
+        }).catch(() => {});
+      }
+    }, []); // only on mount, since pendingAttachments are stable until cleared
+
+    return null;
+  };
+
   return (
     <div className="aui-composer-attachments flex w-full flex-row items-center gap-2 overflow-x-auto">
+      <SyncAttachments />
       {pendingAttachments.map((att, index) => (
         <PendingAttachmentTile key={`${att.path}-${index}`} attachment={att} index={index} />
       ))}

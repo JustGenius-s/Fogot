@@ -24,6 +24,7 @@ export interface ModelConfig {
   maxTokens?: number
   temperature?: number
   contextWindow?: number
+  extraBody?: string
 }
 
 export interface AIConfig {
@@ -38,8 +39,6 @@ const SELECTED_IMAGE_MODEL_KEY = 'fogot-ai-selected-image-model'
 const IMAGE_SIZE_KEY = 'fogot-ai-image-size'
 const IMAGE_RESOLUTION_KEY = 'fogot-ai-image-resolution'
 const IMAGE_QUALITY_KEY = 'fogot-ai-image-quality'
-const PROMPT_LANG_KEY = 'fogot-ai-prompt-lang'
-
 function loadModelsFromStorage(): ModelConfig[] {
   try {
     const raw = localStorage.getItem(MODELS_STORAGE_KEY)
@@ -245,44 +244,6 @@ export function setImageQuality(q: string) {
 
 export function getImageQuality(): string {
   return imageQuality
-}
-
-// ─── Prompt Language Store ─────────────────────────────────────────
-
-export type PromptLanguage = 'zh' | 'en'
-
-function loadPromptLang(): PromptLanguage {
-  try {
-    const v = localStorage.getItem(PROMPT_LANG_KEY)
-    if (v === 'en' || v === 'zh') return v
-  } catch {}
-  return 'zh'
-}
-
-let promptLang: PromptLanguage = loadPromptLang()
-
-const promptLangListeners = new Set<() => void>()
-
-export function usePromptLanguage(): PromptLanguage {
-  return useSyncExternalStore(
-    (listener) => {
-      promptLangListeners.add(listener)
-      return () => promptLangListeners.delete(listener)
-    },
-    () => promptLang,
-  )
-}
-
-export function getPromptLang(): PromptLanguage {
-  return promptLang
-}
-
-export const getPromptLanguage = getPromptLang
-
-export function setPromptLang(lang: PromptLanguage) {
-  promptLang = lang
-  try { localStorage.setItem(PROMPT_LANG_KEY, lang) } catch {}
-  promptLangListeners.forEach((fn) => fn())
 }
 
 // ─── Pending Attachments Store ────────────────────────────────────

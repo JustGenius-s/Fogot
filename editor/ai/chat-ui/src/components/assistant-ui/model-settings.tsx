@@ -22,8 +22,6 @@ import { SettingsIcon, PlusIcon, Trash2Icon, PencilIcon } from "lucide-react";
 import {
   useConfig,
   setModels,
-  usePromptLanguage,
-  setPromptLang,
   type ModelConfig,
   type ModelAuthMode,
   type ModelType,
@@ -202,6 +200,22 @@ const ModelForm: FC<{
                 DeepSeek: 1M, GPT-4o: 128k, Claude: 200k
               </p>
             </div>
+            <div className="flex flex-col gap-1.5">
+              <label className={labelClass}>Extra Body (JSON)</label>
+              <input
+                className={inputClass}
+                placeholder='{"reasoning_split": true}'
+                value={model.extraBody ?? ""}
+                onChange={(e) =>
+                  set({ extraBody: e.target.value || undefined })
+                }
+                spellCheck={false}
+              />
+              <p className="text-[10px] text-muted-foreground/60">
+                Additional JSON merged into request body. MiniMax: {'{"reasoning_split": true}'}
+              </p>
+            </div>
+
           </>
         )}
       </div>
@@ -242,43 +256,6 @@ const ModelListItem: FC<{
     </div>
   </div>
 );
-
-const PromptLanguageSelector: FC = () => {
-  const lang = usePromptLanguage();
-
-  return (
-    <div className="flex flex-col gap-2">
-      <SectionHeader title="Prompt Language" />
-      <div className="grid grid-cols-2 gap-2">
-        <button
-          className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-            lang === "zh"
-              ? "border-ring bg-primary/5 font-medium text-foreground"
-              : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
-          }`}
-          onClick={() => setPromptLang("zh")}
-        >
-          中文
-        </button>
-        <button
-          className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
-            lang === "en"
-              ? "border-ring bg-primary/5 font-medium text-foreground"
-              : "border-border/60 text-muted-foreground hover:border-border hover:text-foreground"
-          }`}
-          onClick={() => setPromptLang("en")}
-        >
-          English
-        </button>
-      </div>
-      <p className="text-[11px] leading-relaxed text-muted-foreground/70">
-        {lang === "zh"
-          ? "AI 代理的系统提示词将使用中文"
-          : "AI agent system prompts will use English"}
-      </p>
-    </div>
-  );
-};
 
 const ModelGroup: FC<{
   title: string;
@@ -403,9 +380,6 @@ export const ModelSettings: FC = () => {
               onAdd={handleAdd}
             />
 
-            <div className="border-t border-border/60 pt-4">
-              <PromptLanguageSelector />
-            </div>
           </div>
         )}
       </DialogContent>

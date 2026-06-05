@@ -11,7 +11,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Thread } from '@/components/assistant-ui/thread'
 import { ModelSettings } from '@/components/assistant-ui/model-settings'
-import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getImageModels, getAttachments, clearAttachments, setActivePlan, usePromptLanguage, useAppView, getAvailableSkills } from '@/bridge'
+import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getImageModels, getAttachments, clearAttachments, setActivePlan, useAppView, getAvailableSkills } from '@/bridge'
 import { AssetMode } from '@/components/assets/asset-mode'
 import { allTools, getToolsForAgent } from '@/ai/tools'
 import { getDefaultSystemPrompt, getPlanSystemPrompt, getAgent } from '@/ai/agents'
@@ -150,17 +150,8 @@ function wrapTransport(
         if (msgs[i].role === 'user') { lastUserIdx = i; break }
       }
       if (lastUserIdx >= 0) {
-        const userMsg = { ...msgs[lastUserIdx], parts: [...msgs[lastUserIdx].parts] }
-        for (const att of attachments) {
-          const ext = att.path.split('.').pop()?.toLowerCase() ?? ''
-          userMsg.parts.push({
-            type: 'file',
-            mediaType: MEDIA_TYPES[ext] || 'application/octet-stream',
-            url: att.dataUrl,
-            filename: att.path.split('/').pop() || att.path,
-          })
-        }
-        msgs[lastUserIdx] = userMsg
+        // Attachments are now handled via ComposerRuntime.addAttachment() 
+        // in PendingAttachments component (attachment.tsx)
       }
       clearAttachments()
     }
@@ -426,17 +417,16 @@ export default function App() {
   const chatModelId = useSelectedChatModelId()
   const chatModel = getSelectedChatModel()
 
-  const promptLang = usePromptLanguage()
 
   useEffect(() => {
     async function init() {
-      const builtins = getBuiltinSkills(promptLang)
+      const builtins = getBuiltinSkills()
       const project = await loadProjectSkills()
       setAvailableSkills([...builtins, ...project])
       clearInvokedSkills()
     }
     init()
-  }, [promptLang])
+  }, [])
 
   const isConfigured = !!(chatModel?.apiKey && chatModel?.apiEndpoint && chatModel?.model)
 
@@ -450,6 +440,13 @@ export default function App() {
       name: 'fogot-llm',
       apiKey: chatModel.apiKey,
       baseURL: chatModel.apiEndpoint,
+      transformRequestBody: (args) => {
+        let extra: Record<string, unknown> = {}
+        if (chatModel.extraBody) {
+          try { extra = JSON.parse(chatModel.extraBody) } catch {}
+        }
+        return { ...extra, ...args }
+      },
     })
 
     const model = provider.chatModel(chatModel.model)
@@ -525,7 +522,7 @@ export default function App() {
       model: chatModel.model,
       contextWindow: chatModel.contextWindow,
     })
-  }, [chatModelId, agentId, isConfigured, chatModel, promptLang])
+  }, [chatModelId, agentId, isConfigured, chatModel])
 
   if (!transport) {
     return <UnconfiguredView />

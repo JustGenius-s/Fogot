@@ -36,11 +36,13 @@ function parseFrontmatter(raw: string): { name: string; description: string; bod
 
 // ─── Built-in Skills ──────────────────────────────────────────────
 
-const BUILTIN_SKILLS_EN: Omit<SkillConfig, 'source'>[] = [
+
+
+const BUILTIN_SKILLS: Omit<SkillConfig, 'source'>[] = [
   {
     id: 'gdscript-expert',
-    name: 'GDScript Expert',
-    description: 'Deep GDScript programming: advanced patterns, performance, engine internals',
+    name: 'GDScript 专家',
+    description: '深度 GDScript 编程辅助：高级模式、性能优化、引擎内部',
     content: `# GDScript Expert
 
 ## Advanced Patterns
@@ -71,8 +73,8 @@ const BUILTIN_SKILLS_EN: Omit<SkillConfig, 'source'>[] = [
   },
   {
     id: 'shader-writer',
-    name: 'Shader Writer',
-    description: 'Godot shaders: canvas_item, spatial, particles, visual shaders',
+    name: '着色器编写',
+    description: 'Godot 着色器：canvas_item、spatial、粒子着色器',
     content: `# Godot Shader Writer
 
 ## Shader Types
@@ -99,8 +101,8 @@ const BUILTIN_SKILLS_EN: Omit<SkillConfig, 'source'>[] = [
   },
   {
     id: 'scene-designer',
-    name: 'Scene Designer',
-    description: 'Level design, scene composition, tilemap, world-building',
+    name: '场景设计',
+    description: '关卡设计、场景组合、瓦片地图、世界构建',
     content: `# Godot Scene Designer
 
 ## Scene Architecture
@@ -129,8 +131,8 @@ const BUILTIN_SKILLS_EN: Omit<SkillConfig, 'source'>[] = [
   },
   {
     id: 'ui-theme',
-    name: 'UI Theme Designer',
-    description: 'Godot Control theming, responsive layout, theme resources',
+    name: 'UI 主题设计',
+    description: 'Godot Control 主题化、响应式布局、主题资源',
     content: `# Godot UI Theme Designer
 
 ## Theme Resources
@@ -161,8 +163,8 @@ const BUILTIN_SKILLS_EN: Omit<SkillConfig, 'source'>[] = [
   },
   {
     id: 'plugin-dev',
-    name: 'Plugin Developer',
-    description: 'Godot editor plugin and GDExtension development',
+    name: '插件开发',
+    description: 'Godot 编辑器插件和 GDExtension 开发',
     content: `# Godot Plugin Developer
 
 ## Structure
@@ -203,16 +205,8 @@ script="plugin.gd"
   },
 ]
 
-const BUILTIN_SKILLS_ZH: Omit<SkillConfig, 'source'>[] = [
-  { ...BUILTIN_SKILLS_EN[0], name: 'GDScript 专家', description: '深度 GDScript 编程辅助：高级模式、性能优化、引擎内部' },
-  { ...BUILTIN_SKILLS_EN[1], name: '着色器编写', description: 'Godot 着色器：canvas_item、spatial、粒子着色器' },
-  { ...BUILTIN_SKILLS_EN[2], name: '场景设计', description: '关卡设计、场景组合、瓦片地图、世界构建' },
-  { ...BUILTIN_SKILLS_EN[3], name: 'UI 主题设计', description: 'Godot Control 主题化、响应式布局、主题资源' },
-  { ...BUILTIN_SKILLS_EN[4], name: '插件开发', description: 'Godot 编辑器插件和 GDExtension 开发' },
-]
-
-export function getBuiltinSkills(lang: 'en' | 'zh' = 'en'): SkillConfig[] {
-  return (lang === 'zh' ? BUILTIN_SKILLS_ZH : BUILTIN_SKILLS_EN).map((s) => ({ ...s, source: 'builtin' as const }))
+export function getBuiltinSkills(): SkillConfig[] {
+  return BUILTIN_SKILLS.map((s) => ({ ...s, source: 'builtin' as const }))
 }
 
 // ─── Project Skill Loading ────────────────────────────────────────
