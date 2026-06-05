@@ -295,6 +295,8 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 			}
 		}
 		return; // Result sent via callback or already sent for errors.
+	} else if (p_tool_name == "read_image") {
+		result = AIToolRPC::read_image(args);
 	} else {
 		result = "Error: Unknown tool '" + p_tool_name + "'";
 		is_error = true;

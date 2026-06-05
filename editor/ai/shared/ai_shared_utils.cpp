@@ -19,6 +19,8 @@ void normalize_project_path(String &p_path) {
 		p_path = "res://" + p_path;
 	}
 }
+
+
 String strip_bbcode(const String &p_text) {
 	String out;
 	int i = 0;
@@ -249,4 +251,45 @@ Node *resolve_node(const String &p_path, String *r_error) {
 		return nullptr;
 	}
 	return node;
+}
+
+String ext_to_mime_type(const String &p_ext) {
+	if (p_ext == "png") {
+		return "image/png";
+	}
+	if (p_ext == "jpg" || p_ext == "jpeg") {
+		return "image/jpeg";
+	}
+	if (p_ext == "webp") {
+		return "image/webp";
+	}
+	if (p_ext == "gif") {
+		return "image/gif";
+	}
+	if (p_ext == "bmp") {
+		return "image/bmp";
+	}
+	if (p_ext == "svg") {
+		return "image/svg+xml";
+	}
+	if (p_ext == "tga") {
+		return "image/x-tga";
+	}
+	return String();
+}
+
+bool is_text_extension(const String &p_ext) {
+	static const char *text_exts[] = {
+		"gd", "tscn", "tres", "cfg", "txt", "md", "json", "csv",
+		"toml", "yaml", "yml", "xml", "html", "css", "js", "ts",
+		"shader", "gdshader", "glsl", "c", "cpp", "h", "hpp",
+		"py", "sh", "bat", "ini", "properties", "import", "godot",
+		nullptr
+	};
+	for (int i = 0; text_exts[i]; i++) {
+		if (p_ext == text_exts[i]) {
+			return true;
+		}
+	}
+	return false;
 }

@@ -87,4 +87,9 @@ String scene_run(const Dictionary &p_args);
 /// NOTE: This tool is async — the result is sent when the game responds.
 String scene_screenshot(const Dictionary &p_args);
 
+/// Read an image file and return base64 + dimensions for the AI to "see" it.
+/// Args: path — res:// path to the image file.
+/// Returns JSON: {"type":"image","path":"...","mimeType":"image/png","width":W,"height":H,"base64":"..."}
+String read_image(const Dictionary &p_args);
+
 } // namespace AIToolRPC

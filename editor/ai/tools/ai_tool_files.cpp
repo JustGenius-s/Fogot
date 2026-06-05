@@ -11,13 +11,13 @@
 #include "core/crypto/crypto_core.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
+#include "core/io/image.h"
 #include "core/io/json.h"
 #include "core/io/resource_importer.h"
 #include "core/os/os.h"
 #include "core/os/thread.h"
 #include "core/string/ustring.h"
 #include "core/templates/safe_refcount.h"
-#include "editor/doc/editor_help.h"
 #include "editor/file_system/editor_file_system.h"
 
 namespace {
@@ -132,13 +132,7 @@ void _execute_thread_func(void *p_userdata) {
 const int MAX_ASSETS = 1000;
 
 bool is_image_ext(const String &p_ext) {
-	static const char *k_image_exts[] = { "png", "jpg", "jpeg", "webp", "gif", "bmp", "svg", "tga", nullptr };
-	for (int i = 0; k_image_exts[i]; i++) {
-		if (p_ext == k_image_exts[i]) {
-			return true;
-		}
-	}
-	return false;
+	return !ext_to_mime_type(p_ext).is_empty();
 }
 
 void collect_assets(const String &p_dir_path, Array &p_out, bool p_recursive, int p_depth) {
@@ -268,22 +262,6 @@ struct SearchState {
 	int match_count = 0;
 };
 
-bool is_text_extension(const String &p_ext) {
-	static const char *text_exts[] = {
-		"gd", "tscn", "tres", "cfg", "txt", "md", "json", "csv",
-		"toml", "yaml", "yml", "xml", "html", "css", "js", "ts",
-		"shader", "gdshader", "glsl", "c", "cpp", "h", "hpp",
-		"py", "sh", "bat", "ini", "properties", "import", "godot",
-		nullptr
-	};
-	for (int i = 0; text_exts[i]; i++) {
-		if (p_ext == text_exts[i]) {
-			return true;
-		}
-	}
-	return false;
-}
-
 void search_in_file(const String &p_path, SearchState &p_state) {
 	if (p_state.match_count >= MAX_RESULTS) {
 		return;
@@ -372,165 +350,6 @@ void search_dir(const String &p_dir, SearchState &p_state) {
 }
 
 } // anonymous namespace
-
-String AIToolRPC::get_class_docs(const Dictionary &p_args) {
-	String class_name = p_args.get("class_name", "");
-	bool list_classes = p_args.get("list_classes", false);
-	bool brief = p_args.get("brief", false);
-
-	DocTools *doc_data = EditorHelp::get_doc_data();
-	if (!doc_data) {
-		return "Error: Documentation not yet loaded.";
-	}
-
-	// Mode 1: List all available class names.
-	if (list_classes) {
-		Array names;
-		for (const KeyValue<String, DocData::ClassDoc> &E : doc_data->class_list) {
-			names.push_back(E.key);
-		}
-		names.sort();
-
-		Dictionary result;
-		result["total"] = names.size();
-		result["classes"] = names;
-		return JSON::stringify(result);
-	}
-
-	// Mode 2: Get documentation for a specific class.
-	if (class_name.is_empty()) {
-		return "Error: 'class_name' is required (or set list_classes=true to list all classes).";
-	}
-
-	if (!doc_data->class_list.has(class_name)) {
-		// Try case-insensitive search.
-		String found;
-		for (const KeyValue<String, DocData::ClassDoc> &E : doc_data->class_list) {
-			if (E.key.to_lower() == class_name.to_lower()) {
-				found = E.key;
-				break;
-			}
-		}
-		if (found.is_empty()) {
-			return "Error: Class '" + class_name + "' not found. Use list_classes=true to see available classes.";
-		}
-		class_name = found;
-	}
-
-	const DocData::ClassDoc &cls = doc_data->class_list[class_name];
-
-	Dictionary result;
-	result["name"] = cls.name;
-	if (!cls.inherits.is_empty()) {
-		result["inherits"] = cls.inherits;
-	}
-	if (!cls.brief_description.is_empty()) {
-		result["brief_description"] = strip_bbcode(cls.brief_description);
-	}
-
-	// Brief mode: return just the overview without detailed descriptions.
-	if (brief) {
-		// Properties: name + type only.
-		if (!cls.properties.is_empty()) {
-			Array props;
-			for (const DocData::PropertyDoc &p : cls.properties) {
-				props.push_back(p.type + " " + p.name);
-			}
-			result["properties"] = props;
-		}
-		// Methods: signatures only.
-		if (!cls.methods.is_empty()) {
-			Array methods;
-			for (const DocData::MethodDoc &m : cls.methods) {
-				methods.push_back(format_method_sig(m));
-			}
-			result["methods"] = methods;
-		}
-		// Signals: names only.
-		if (!cls.signals.is_empty()) {
-			Array signals;
-			for (const DocData::MethodDoc &s : cls.signals) {
-				signals.push_back(format_method_sig(s));
-			}
-			result["signals"] = signals;
-		}
-		return JSON::stringify(result);
-	}
-
-	// Full mode: include descriptions.
-	if (!cls.description.is_empty()) {
-		result["description"] = strip_bbcode(cls.description);
-	}
-
-	// Properties.
-	if (!cls.properties.is_empty()) {
-		Array props;
-		for (const DocData::PropertyDoc &p : cls.properties) {
-			Dictionary pd;
-			pd["name"] = p.name;
-			pd["type"] = p.type;
-			if (!p.default_value.is_empty()) {
-				pd["default"] = p.default_value;
-			}
-			if (!p.description.is_empty()) {
-				pd["description"] = strip_bbcode(p.description);
-			}
-			props.push_back(pd);
-		}
-		result["properties"] = props;
-	}
-
-	// Methods.
-	if (!cls.methods.is_empty()) {
-		Array methods;
-		for (const DocData::MethodDoc &m : cls.methods) {
-			Dictionary md;
-			md["signature"] = format_method_sig(m);
-			if (!m.description.is_empty()) {
-				md["description"] = strip_bbcode(m.description);
-			}
-			methods.push_back(md);
-		}
-		result["methods"] = methods;
-	}
-
-	// Signals.
-	if (!cls.signals.is_empty()) {
-		Array signals;
-		for (const DocData::MethodDoc &s : cls.signals) {
-			Dictionary sd;
-			sd["signature"] = format_method_sig(s);
-			if (!s.description.is_empty()) {
-				sd["description"] = strip_bbcode(s.description);
-			}
-			signals.push_back(sd);
-		}
-		result["signals"] = signals;
-	}
-
-	// Constants & enums.
-	if (!cls.constants.is_empty()) {
-		Array constants;
-		for (const DocData::ConstantDoc &c : cls.constants) {
-			Dictionary cd;
-			cd["name"] = c.name;
-			if (!c.value.is_empty()) {
-				cd["value"] = c.value;
-			}
-			if (!c.enumeration.is_empty()) {
-				cd["enum"] = c.enumeration;
-			}
-			if (!c.description.is_empty()) {
-				cd["description"] = strip_bbcode(c.description);
-			}
-			constants.push_back(cd);
-		}
-		result["constants"] = constants;
-	}
-
-	return JSON::stringify(result);
-}
-
 
 String AIToolRPC::copy_file(const Dictionary &p_args) {
 	String source = p_args.get("source", "");
@@ -970,4 +789,58 @@ String AIToolRPC::write_file(const Dictionary &p_args) {
 	}
 
 	return "Successfully wrote to " + path;
+}
+
+// --- read_image ---
+
+String AIToolRPC::read_image(const Dictionary &p_args) {
+	String path = p_args.get("path", "");
+
+	if (path.is_empty()) {
+		return "Error: 'path' is required.";
+	}
+	normalize_project_path(path);
+
+	if (!FileAccess::exists(path)) {
+		return "Error: File not found at '" + path + "'.";
+	}
+
+	// Determine MIME type from extension.
+	String ext = path.get_extension().to_lower();
+	String mime_type = ext_to_mime_type(ext);
+	if (mime_type.is_empty()) {
+		return "Error: Unrecognized image extension '" + ext + "'.";
+	}
+
+	// Read raw bytes for base64 encoding.
+	Error err;
+	Ref<FileAccess> f = FileAccess::open(path, FileAccess::READ, &err);
+	if (err != OK || f.is_null()) {
+		return "Error: Failed to open file '" + path + "'.";
+	}
+	PackedByteArray raw_data = f->get_buffer(f->get_length());
+	f->close();
+
+	// Encode to base64.
+	String base64 = CryptoCore::b64_encode_str(raw_data.ptr(), raw_data.size());
+
+	// Load as Godot Image to get dimensions.
+	Ref<Image> img;
+	img.instantiate();
+	err = img->load(path);
+	int width = 0;
+	int height = 0;
+	if (err == OK) {
+		width = img->get_width();
+		height = img->get_height();
+	}
+
+	Dictionary result;
+	result["type"] = "image";
+	result["path"] = path;
+	result["mimeType"] = mime_type;
+	result["width"] = width;
+	result["height"] = height;
+	result["base64"] = base64;
+	return JSON::stringify(result);
 }

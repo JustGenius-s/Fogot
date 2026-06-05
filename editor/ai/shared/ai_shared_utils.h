@@ -40,3 +40,11 @@ String strip_bbcode(const String &p_text);
 /// Format a DocData::MethodDoc as a compact one-liner, e.g.
 /// "void move_and_slide()" or "Vector2 get_position() const".
 String format_method_sig(const DocData::MethodDoc &p_method);
+
+/// Map a lowercase file extension to its MIME type.
+/// Returns empty string if the extension is not a recognized image format.
+String ext_to_mime_type(const String &p_ext);
+
+/// Check whether a lowercase file extension is a text-based format
+/// (as opposed to binary). Used by search_files to skip binary files.
+bool is_text_extension(const String &p_ext);

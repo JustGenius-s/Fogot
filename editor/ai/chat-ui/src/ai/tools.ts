@@ -64,6 +64,10 @@ export {
   useSkill,
 } from './tools/skill'
 
+export {
+  readImage,
+} from './tools/image-read'
+
 // ─── Tool Collections ─────────────────────────────────────────────
 
 import {
@@ -115,6 +119,10 @@ import {
   useSkill,
 } from './tools/skill'
 
+import {
+  readImage,
+} from './tools/image-read'
+
 export const allTools = {
   // File operations
   read_file: readFile,
@@ -155,6 +163,9 @@ export const allTools = {
   // Delegation & skills
   delegate_task: delegateTask,
   use_skill: useSkill,
+
+  // Image reading (multimodal)
+  read_image: readImage,
 } as const
 
 export type ToolName = keyof typeof allTools
