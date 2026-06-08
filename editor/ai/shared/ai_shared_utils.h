@@ -8,10 +8,12 @@
 #pragma once
 
 #include "core/doc_data.h"
+#include "core/math/transform_2d.h"
 #include "core/variant/dictionary.h"
 #include "core/variant/variant.h"
 #include "core/string/ustring.h"
 
+class Bone2D;
 class Node;
 
 /// Shared utilities for AI tool implementations.
@@ -48,3 +50,20 @@ String ext_to_mime_type(const String &p_ext);
 /// Check whether a lowercase file extension is a text-based format
 /// (as opposed to binary). Used by search_files to skip binary files.
 bool is_text_extension(const String &p_ext);
+
+/// Collect all nodes in a scene tree as a flat Array of Dictionaries.
+/// Each entry has: path, type, hasScript.
+void collect_nodes_flat(Node *p_node, Node *p_root, Array &r_out);
+
+/// Recursively scan a project directory for files with the given extension.
+/// Results are appended to r_out as Dictionaries with: path, name.
+void scan_project_files(const String &p_dir, const String &p_ext, Array &r_out, int p_depth = 0);
+
+/// Parse a JSON Dictionary into a Transform2D (columns layout).
+Transform2D parse_transform2d(const Dictionary &p_dict);
+
+/// Convert a Transform2D to a JSON-safe Dictionary (columns layout).
+Dictionary transform2d_to_dict(const Transform2D &p_t);
+
+/// Convert a Bone2D node to a JSON-safe Dictionary with all relevant properties.
+Dictionary bone2d_to_dict(Bone2D *p_bone);

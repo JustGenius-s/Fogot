@@ -22,6 +22,7 @@ import {
   getLastUsage,
   setCurrentThreadId,
 } from '@/ai/context-manager'
+import { extractMentions, resolveMentionContext } from '@/ai/mentions'
 import { DEFAULT_MODE_ID } from '@/components/assistant-ui/mode-selector'
 import { threadListAdapter } from '@/lib/thread-storage'
 import { WriteFileToolUI } from '@/components/custom/write-file-tool-ui'
@@ -154,6 +155,30 @@ function wrapTransport(
         // in PendingAttachments component (attachment.tsx)
       }
       clearAttachments()
+    }
+
+    // --- @ mention context injection ---
+    {
+      let lastUserIdx = -1
+      for (let i = msgs.length - 1; i >= 0; i--) {
+        if (msgs[i].role === 'user') { lastUserIdx = i; break }
+      }
+      if (lastUserIdx >= 0) {
+        const userMsg = msgs[lastUserIdx]
+        const textParts = (userMsg.parts ?? userMsg.content ?? [])
+          .filter((p: any) => p.type === 'text')
+        const fullText = textParts.map((p: any) => p.text ?? '').join('\n')
+        const mentions = extractMentions(fullText)
+        if (mentions.length > 0) {
+          const context = await resolveMentionContext(mentions)
+          if (context) {
+            const parts = [...(userMsg.parts ?? userMsg.content ?? [])]
+            parts.push({ type: 'text', text: '\n\n' + context })
+            msgs = [...msgs]
+            msgs[lastUserIdx] = { ...userMsg, parts, content: parts }
+          }
+        }
+      }
     }
 
     // --- Context compression ---

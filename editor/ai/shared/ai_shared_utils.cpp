@@ -7,10 +7,11 @@
 
 #include "ai_shared_utils.h"
 
+#include "core/io/dir_access.h"
 #include "core/variant/dictionary.h"
 #include "editor/editor_interface.h"
+#include "scene/2d/skeleton_2d.h"
 #include "scene/main/node.h"
-#include "scene/main/scene_tree.h"
 #include "scene/main/scene_tree.h"
 
 
@@ -292,4 +293,100 @@ bool is_text_extension(const String &p_ext) {
 		}
 	}
 	return false;
+}
+
+void collect_nodes_flat(Node *p_node, Node *p_root, Array &r_out) {
+	Dictionary d;
+	d["name"] = p_node->get_name();
+	d["path"] = (p_node == p_root)
+			? String(".")
+			: String(p_root->get_path_to(p_node));
+	d["type"] = p_node->get_class();
+	Ref<Script> scr = p_node->get_script();
+	d["hasScript"] = scr.is_valid() && !scr->get_path().is_empty();
+	r_out.push_back(d);
+
+	for (int i = 0; i < p_node->get_child_count(); i++) {
+		collect_nodes_flat(p_node->get_child(i), p_root, r_out);
+	}
+}
+
+void scan_project_files(const String &p_dir, const String &p_ext, Array &r_out, int p_depth) {
+	if (p_depth > 10) {
+		return;
+	}
+	Ref<DirAccess> da = DirAccess::open(p_dir);
+	if (da.is_null()) {
+		return;
+	}
+
+	da->list_dir_begin();
+	String item = da->get_next();
+	while (!item.is_empty()) {
+		if (item.begins_with(".") || item == "addons") {
+			item = da->get_next();
+			continue;
+		}
+		String full = p_dir.path_join(item);
+		if (da->current_is_dir()) {
+			scan_project_files(full, p_ext, r_out, p_depth + 1);
+		} else if (item.get_extension().to_lower() == p_ext) {
+			Dictionary d;
+			d["path"] = full;
+			d["name"] = item;
+			r_out.push_back(d);
+		}
+		item = da->get_next();
+	}
+	da->list_dir_end();
+}
+
+Transform2D parse_transform2d(const Dictionary &p_dict) {
+	Transform2D t;
+	if (p_dict.has("x") && p_dict.has("y") && p_dict.has("origin")) {
+		Dictionary x = p_dict["x"];
+		Dictionary y = p_dict["y"];
+		Dictionary origin = p_dict["origin"];
+		t.columns[0] = Vector2(float(x.get("x", 1)), float(x.get("y", 0)));
+		t.columns[1] = Vector2(float(y.get("x", 0)), float(y.get("y", 1)));
+		t.columns[2] = Vector2(float(origin.get("x", 0)), float(origin.get("y", 0)));
+	}
+	return t;
+}
+
+Dictionary transform2d_to_dict(const Transform2D &p_t) {
+	Dictionary d;
+	{
+		Dictionary col;
+		col["x"] = p_t.columns[0].x;
+		col["y"] = p_t.columns[0].y;
+		d["x"] = col;
+	}
+	{
+		Dictionary col;
+		col["x"] = p_t.columns[1].x;
+		col["y"] = p_t.columns[1].y;
+		d["y"] = col;
+	}
+	{
+		Dictionary o;
+		o["x"] = p_t.columns[2].x;
+		o["y"] = p_t.columns[2].y;
+		d["origin"] = o;
+	}
+	return d;
+}
+
+Dictionary bone2d_to_dict(Bone2D *p_bone) {
+	Dictionary b;
+	b["name"] = p_bone->get_name();
+	b["rest"] = transform2d_to_dict(p_bone->get_rest());
+	b["skeleton_rest"] = transform2d_to_dict(p_bone->get_skeleton_rest());
+	b["length"] = p_bone->get_length();
+	b["bone_angle"] = p_bone->get_bone_angle();
+	b["global_position"] = variant_to_json(p_bone->get_global_position());
+	b["global_rotation"] = p_bone->get_global_rotation();
+	b["global_scale"] = variant_to_json(p_bone->get_global_scale());
+	b["index_in_skeleton"] = p_bone->get_index_in_skeleton();
+	return b;
 }

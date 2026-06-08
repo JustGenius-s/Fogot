@@ -21,6 +21,7 @@ import {
 } from "@/components/assistant-ui/tool-group";
 import { Image } from "@/components/assistant-ui/image";
 import { SkillPopover } from "@/components/assistant-ui/skill-popover";
+import { MentionPopover } from "@/components/assistant-ui/mention-popover";
 import { DirectiveText } from "@/components/assistant-ui/directive-text";
 import { ViewToggle } from "@/components/assets/view-toggle";
 import { AssetPicker } from "@/components/assets/asset-picker";
@@ -214,6 +215,7 @@ const Composer: FC = () => {
                         aria-label="Message input"
                       /><ComposerAction /></div>
         <SkillPopover />
+        <MentionPopover />
       </ComposerPrimitive.Root>
     </ComposerPrimitive.Unstable_TriggerPopoverRoot>
   );

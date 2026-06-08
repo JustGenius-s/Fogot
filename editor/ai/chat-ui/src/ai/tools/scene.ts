@@ -122,9 +122,21 @@ export const sceneScreenshot = tool({
     'Take a screenshot of the currently running scene and save it as a PNG.',
     'Returns JSON with width, height, and the saved file path.',
     'The scene must already be running (use run_scene first).',
+    'Use read_image on the returned path if you need to visually inspect the screenshot.',
   ].join('\n'),
   inputSchema: z.object({
     output_path: z.string().optional().describe('Output path for the screenshot PNG (e.g. "res://screenshots/capture.png"). If omitted, saves to a system temp path.'),
   }),
-  execute: async (args) => bridgeRPC('scene_screenshot', args),
+  execute: async (args) => {
+    const json = await bridgeRPC('scene_screenshot', args)
+    try {
+      const parsed = JSON.parse(json)
+      // Strip base64 from the result sent to the LLM — it's only needed
+      // by the chat UI for inline preview and is far too large for the API.
+      const { base64, ...meta } = parsed
+      return JSON.stringify(meta)
+    } catch {
+      return json
+    }
+  },
 })

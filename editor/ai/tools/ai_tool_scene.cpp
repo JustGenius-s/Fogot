@@ -6,6 +6,7 @@
 /**************************************************************************/
 
 #include "ai_tool_rpc.h"
+#include "scene/2d/skeleton_2d.h"
 #include "../shared/ai_shared_utils.h"
 
 #include "core/io/file_access.h"
@@ -435,4 +436,92 @@ String AIToolRPC::scene_screenshot(const Dictionary &p_args) {
 	// The actual async screenshot request is handled in AIChatDock.
 	// This function just validates the preconditions.
 	return "OK";
+}
+
+// --- scene_get_skeleton2d_data ---
+
+String AIToolRPC::scene_get_skeleton2d_data(const Dictionary &p_args) {
+	String path = p_args.get("path", "");
+	String error;
+	Node *node = resolve_node(path, &error);
+	if (!node) {
+		return error;
+	}
+
+	Skeleton2D *skel = Object::cast_to<Skeleton2D>(node);
+	if (!skel) {
+		return "Error: Node '" + path + "' is not a Skeleton2D.";
+	}
+
+	int bone_count = skel->get_bone_count();
+	Dictionary result;
+	result["bone_count"] = bone_count;
+
+	Array bones;
+	for (int i = 0; i < bone_count; i++) {
+		Bone2D *bone = skel->get_bone(i);
+		if (!bone) {
+			continue;
+		}
+		bones.push_back(bone2d_to_dict(bone));
+	}
+	result["bones"] = bones;
+	return JSON::stringify(result);
+}
+
+// --- scene_set_bone2d_rest ---
+
+String AIToolRPC::scene_set_bone2d_rest(const Dictionary &p_args) {
+	String path = p_args.get("path", "");
+	String error;
+	Node *node = resolve_node(path, &error);
+	if (!node) {
+		return error;
+	}
+
+	Bone2D *bone = Object::cast_to<Bone2D>(node);
+	if (!bone) {
+		return "Error: Node '" + path + "' is not a Bone2D.";
+	}
+
+	Variant parsed = JSON::parse_string(p_args.get("rest", "{}"));
+	if (parsed.get_type() != Variant::DICTIONARY) {
+		return "Error: 'rest' must be a valid JSON object.";
+	}
+	Dictionary rest_dict = parsed;
+
+	Transform2D new_rest = parse_transform2d(rest_dict);
+	Transform2D old_rest = bone->get_rest();
+
+	EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
+	undo->create_action("Set rest for Bone2D " + bone->get_name());
+	undo->add_do_method(bone, "set_rest", new_rest);
+	undo->add_undo_method(bone, "set_rest", old_rest);
+	undo->commit_action();
+
+	return "OK: Set rest for Bone2D '" + bone->get_name() + "'.";
+}
+
+// --- mention_suggestions ---
+
+String AIToolRPC::mention_suggestions(const Dictionary &p_args) {
+	Dictionary result;
+
+	Array nodes;
+	Node *root = EditorInterface::get_singleton()->get_edited_scene_root();
+	if (root) {
+		collect_nodes_flat(root, root, nodes);
+	}
+	result["nodes"] = nodes;
+
+	Array scenes;
+	scan_project_files("res://", "tscn", scenes);
+	scan_project_files("res://", "scn", scenes);
+	result["scenes"] = scenes;
+
+	Array scripts;
+	scan_project_files("res://", "gd", scripts);
+	result["scripts"] = scripts;
+
+	return JSON::stringify(result);
 }

@@ -92,4 +92,24 @@ String scene_screenshot(const Dictionary &p_args);
 /// Returns JSON: {"type":"image","path":"...","mimeType":"image/png","width":W,"height":H,"base64":"..."}
 String read_image(const Dictionary &p_args);
 
+
+/// Return a flat list of scene nodes, scene files, and script files
+/// for the @ mention autocomplete popover.
+/// Args: none.
+/// Returns JSON: { nodes: [{path,type,hasScript}], scenes: [{path,name}], scripts: [{path,name}] }
+String mention_suggestions(const Dictionary &p_args);
+
+/// Skeleton2D tools — direct scene content editing in the 2D skeleton tree.
+
+/// Get Skeleton2D bone hierarchy, rest poses, and current transform.
+/// Args: path (node path to Skeleton2D).
+/// Returns JSON: bone_count, bones[] with name, rest, skeleton_rest,
+///         global_position, global_rotation, global_scale, length, bone_angle.
+String scene_get_skeleton2d_data(const Dictionary &p_args);
+
+/// Set rest transform on a Bone2D (undoable).
+/// Args: path (node path to Bone2D),
+///       rest (JSON Transform2D: {x:{x,y}, y:{x,y}, origin:{x,y}}).
+String scene_set_bone2d_rest(const Dictionary &p_args);
+
 } // namespace AIToolRPC
