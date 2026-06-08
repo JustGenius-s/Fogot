@@ -165,17 +165,17 @@ export const MentionPopover: FC = () => {
                 key={item.id}
                 item={item}
                 index={index}
-                className="flex w-full flex-col gap-0.5 px-3 py-2 text-sm cursor-pointer hover:bg-accent data-highlighted:bg-accent"
+                className="flex w-full items-start gap-2 px-3 py-2 text-sm text-left cursor-pointer hover:bg-accent data-highlighted:bg-accent"
               >
-                <div className="flex items-center gap-2">
-                  <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+                <Icon className="size-3.5 shrink-0 text-muted-foreground mt-0.5" />
+                <div className="min-w-0 flex flex-col">
                   <span className="font-medium truncate">{item.label}</span>
+                  {item.description && (
+                    <span className="text-xs text-muted-foreground line-clamp-1">
+                      {item.description}
+                    </span>
+                  )}
                 </div>
-                {item.description && (
-                  <span className="pl-5.5 text-xs text-muted-foreground line-clamp-1">
-                    {item.description}
-                  </span>
-                )}
               </ComposerPrimitive.Unstable_TriggerPopoverItem>
             )
           })

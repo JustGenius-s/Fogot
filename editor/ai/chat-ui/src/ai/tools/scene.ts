@@ -58,14 +58,16 @@ export const sceneDeleteNode = tool({
 
 export const sceneSetProperty = tool({
   description: [
-    'Set a property value on a node (undoable).',
-    'The value is JSON-encoded — use string quotes for string values.',
-    'Examples: `"Hello"`, `42`, `true`, `[1,2,3]`, `{"x":0,"y":0}`.',
+    'Set a property value on a scene node in the editor (undoable). ALWAYS prefer this over editing .tscn files directly.',
+    'This modifies the live scene in the editor — changes are reflected immediately and can be undone with Ctrl+Z.',
+    'The value must be JSON-encoded. Common examples:',
+    '  position: `{"x":100,"y":200}`, scale: `{"x":2,"y":2}`, modulate: `{"r":1,"g":0,"b":0,"a":1}`',
+    '  visible: `true`, text: `"Hello"`, texture: `"res://icon.svg"`',
   ].join('\n'),
   inputSchema: z.object({
-    path: z.string().describe('Node path relative to scene root.'),
-    property: z.string().describe('Property name (e.g. "position", "modulate", "text").'),
-    value: z.string().describe('JSON-encoded value. Use quotes for strings, no quotes for numbers/booleans.'),
+    path: z.string().describe('Node path relative to scene root (e.g. "Player", "Player/Sprite2D").'),
+    property: z.string().describe('Property name (e.g. "position", "scale", "modulate", "visible", "text", "texture").'),
+    value: z.string().describe('JSON-encoded value. Use {"x":0,"y":0} for Vector2, {"r":1,"g":1,"b":1,"a":1} for Color, "string" for strings.'),
   }),
   execute: async (args) => bridgeRPC('scene_set_property', args),
 })
@@ -139,4 +141,30 @@ export const sceneScreenshot = tool({
       return json
     }
   },
+})
+
+export const sceneGetSkeleton2dData = tool({
+  description: [
+    'Get the full bone hierarchy and transforms of a Skeleton2D node.',
+    'Returns bone_count and bones[] with name, rest, skeleton_rest, length, bone_angle,',
+    'global_position, global_rotation, global_scale, and index_in_skeleton.',
+    'Use this to inspect skeleton structure before modifying bones.',
+  ].join('\n'),
+  inputSchema: z.object({
+    path: z.string().describe('Node path to the Skeleton2D node relative to scene root.'),
+  }),
+  execute: async (args) => bridgeRPC('scene_get_skeleton2d_data', args),
+})
+
+export const sceneSetBone2dRest = tool({
+  description: [
+    'Set the rest transform on a Bone2D node (undoable).',
+    'The rest transform defines the bone\'s default pose in its parent\'s coordinate space.',
+    'Use scene_get_skeleton2d_data first to inspect the current rest values.',
+  ].join('\n'),
+  inputSchema: z.object({
+    path: z.string().describe('Node path to the Bone2D node relative to scene root.'),
+    rest: z.string().describe('JSON Transform2D: {"x":{"x":1,"y":0},"y":{"x":0,"y":1},"origin":{"x":0,"y":0}}'),
+  }),
+  execute: async (args) => bridgeRPC('scene_set_bone2d_rest', args),
 })
