@@ -8,6 +8,7 @@
 #include "ai_shared_utils.h"
 
 #include "core/io/dir_access.h"
+#include "core/io/resource_loader.h"
 #include "core/variant/dictionary.h"
 #include "editor/editor_interface.h"
 #include "scene/2d/skeleton_2d.h"
@@ -389,4 +390,101 @@ Dictionary bone2d_to_dict(Bone2D *p_bone) {
 	b["global_scale"] = variant_to_json(p_bone->get_global_scale());
 	b["index_in_skeleton"] = p_bone->get_index_in_skeleton();
 	return b;
+}
+
+Variant coerce_json_to_type(const Variant &p_value, Variant::Type p_target) {
+	const Variant::Type src = p_value.get_type();
+	if (src == p_target || p_target == Variant::NIL) {
+		return p_value;
+	}
+
+	// Reads {"x":..,"y":..} or [x, y] into a Vector2.
+	auto to_vec2 = [](const Variant &v) -> Vector2 {
+		if (v.get_type() == Variant::DICTIONARY) {
+			Dictionary d = v;
+			return Vector2(float(d.get("x", 0)), float(d.get("y", 0)));
+		}
+		if (v.get_type() == Variant::ARRAY) {
+			Array a = v;
+			return Vector2(a.size() > 0 ? float(a[0]) : 0.0f, a.size() > 1 ? float(a[1]) : 0.0f);
+		}
+		return Vector2();
+	};
+
+	switch (p_target) {
+		case Variant::VECTOR2: {
+			if (src == Variant::DICTIONARY || src == Variant::ARRAY) {
+				return to_vec2(p_value);
+			}
+		} break;
+		case Variant::VECTOR3: {
+			if (src == Variant::DICTIONARY) {
+				Dictionary d = p_value;
+				return Vector3(float(d.get("x", 0)), float(d.get("y", 0)), float(d.get("z", 0)));
+			}
+		} break;
+		case Variant::COLOR: {
+			if (src == Variant::DICTIONARY) {
+				Dictionary d = p_value;
+				return Color(float(d.get("r", 1)), float(d.get("g", 1)), float(d.get("b", 1)), float(d.get("a", 1)));
+			}
+		} break;
+		case Variant::PACKED_VECTOR2_ARRAY: {
+			if (src == Variant::ARRAY) {
+				Array a = p_value;
+				PackedVector2Array out;
+				out.resize(a.size());
+				for (int i = 0; i < a.size(); i++) {
+					out.write[i] = to_vec2(a[i]);
+				}
+				return out;
+			}
+		} break;
+		case Variant::PACKED_INT32_ARRAY: {
+			if (src == Variant::ARRAY) {
+				Array a = p_value;
+				PackedInt32Array out;
+				out.resize(a.size());
+				for (int i = 0; i < a.size(); i++) {
+					out.write[i] = int(a[i]);
+				}
+				return out;
+			}
+		} break;
+		case Variant::PACKED_FLOAT32_ARRAY: {
+			if (src == Variant::ARRAY) {
+				Array a = p_value;
+				PackedFloat32Array out;
+				out.resize(a.size());
+				for (int i = 0; i < a.size(); i++) {
+					out.write[i] = float(a[i]);
+				}
+				return out;
+			}
+		} break;
+		case Variant::PACKED_COLOR_ARRAY: {
+			if (src == Variant::ARRAY) {
+				Array a = p_value;
+				PackedColorArray out;
+				out.resize(a.size());
+				for (int i = 0; i < a.size(); i++) {
+					Dictionary d = a[i];
+					out.write[i] = Color(float(d.get("r", 1)), float(d.get("g", 1)), float(d.get("b", 1)), float(d.get("a", 1)));
+				}
+				return out;
+			}
+		} break;
+		case Variant::OBJECT: {
+			// Load a resource from a "res://" (or absolute) path string.
+			if (src == Variant::STRING && !String(p_value).is_empty()) {
+				Ref<Resource> res = ResourceLoader::load(p_value);
+				if (res.is_valid()) {
+					return res;
+				}
+			}
+		} break;
+		default:
+			break;
+	}
+	return p_value;
 }

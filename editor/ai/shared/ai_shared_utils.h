@@ -67,3 +67,12 @@ Dictionary transform2d_to_dict(const Transform2D &p_t);
 
 /// Convert a Bone2D node to a JSON-safe Dictionary with all relevant properties.
 Dictionary bone2d_to_dict(Bone2D *p_bone);
+
+/// Coerce a JSON-parsed Variant into the type expected by a node property.
+/// JSON has no native Vector2/Color/packed-array/resource types, so the chat
+/// agent encodes them as dictionaries, arrays and "res://" path strings. This
+/// converts those shapes into the concrete Godot types (Vector2, Vector3,
+/// Color, PackedVector2Array, PackedInt32Array, PackedFloat32Array,
+/// PackedColorArray, loaded resources). Returns the value unchanged when it
+/// already matches the target or no rule applies.
+Variant coerce_json_to_type(const Variant &p_value, Variant::Type p_target);

@@ -194,25 +194,13 @@ String AIToolRPC::scene_set_property(const Dictionary &p_args) {
 
 	Variant old_value = node->get(property);
 
-	// Try to coerce the value to match the property type.
+	// Coerce the JSON value to match the property type (Vector2, packed arrays,
+	// resource paths, etc.).
 	List<PropertyInfo> props;
 	node->get_property_list(&props);
 	for (const PropertyInfo &pi : props) {
 		if (pi.name == property) {
-			Variant::Type target_type = pi.type;
-			if (target_type != Variant::NIL && target_type != parsed.get_type()) {
-				// Attempt explicit construction for common types.
-				if (target_type == Variant::VECTOR2 && parsed.get_type() == Variant::DICTIONARY) {
-					Dictionary d = parsed;
-					parsed = Vector2(float(d.get("x", 0)), float(d.get("y", 0)));
-				} else if (target_type == Variant::VECTOR3 && parsed.get_type() == Variant::DICTIONARY) {
-					Dictionary d = parsed;
-					parsed = Vector3(float(d.get("x", 0)), float(d.get("y", 0)), float(d.get("z", 0)));
-				} else if (target_type == Variant::COLOR && parsed.get_type() == Variant::DICTIONARY) {
-					Dictionary d = parsed;
-					parsed = Color(float(d.get("r", 1)), float(d.get("g", 1)), float(d.get("b", 1)), float(d.get("a", 1)));
-				}
-			}
+			parsed = coerce_json_to_type(parsed, pi.type);
 			break;
 		}
 	}
