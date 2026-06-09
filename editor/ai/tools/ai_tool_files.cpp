@@ -15,7 +15,6 @@
 #include "core/io/json.h"
 #include "core/io/resource_importer.h"
 #include "core/os/os.h"
-#include "core/os/thread.h"
 #include "core/string/ustring.h"
 #include "core/templates/safe_refcount.h"
 #include "editor/file_system/editor_file_system.h"

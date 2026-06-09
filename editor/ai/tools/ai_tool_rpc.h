@@ -82,11 +82,6 @@ String scene_get_class_docs(const Dictionary &p_args);
 /// Args: scene_path (optional) — path to the .tscn/.scn file. Defaults to the currently open scene.
 String scene_run(const Dictionary &p_args);
 
-/// Request a screenshot of the currently running scene.
-/// Args: output_path (optional) — where to save the PNG. Defaults to a temp path.
-/// NOTE: This tool is async — the result is sent when the game responds.
-String scene_screenshot(const Dictionary &p_args);
-
 /// Read an image file and return base64 + dimensions for the AI to "see" it.
 /// Args: path — res:// path to the image file.
 /// Returns JSON: {"type":"image","path":"...","mimeType":"image/png","width":W,"height":H,"base64":"..."}

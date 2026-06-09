@@ -413,19 +413,6 @@ String AIToolRPC::scene_run(const Dictionary &p_args) {
 	return JSON::stringify(result);
 }
 
-// --- scene_screenshot ---
-
-String AIToolRPC::scene_screenshot(const Dictionary &p_args) {
-	EditorInterface *ei = EditorInterface::get_singleton();
-	if (!ei->is_playing_scene()) {
-		return "Error: No scene is currently running. Start a scene with run_scene first.";
-	}
-
-	// The actual async screenshot request is handled in AIChatDock.
-	// This function just validates the preconditions.
-	return "OK";
-}
-
 // --- scene_get_skeleton2d_data ---
 
 String AIToolRPC::scene_get_skeleton2d_data(const Dictionary &p_args) {

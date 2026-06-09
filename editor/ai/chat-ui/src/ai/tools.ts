@@ -36,7 +36,6 @@ export {
   sceneMoveChild,
   sceneGetClassDocs,
   sceneRun,
-  sceneScreenshot,
   sceneGetSkeleton2dData,
   sceneSetBone2dRest,
 } from './tools/scene'
@@ -94,7 +93,6 @@ import {
   sceneMoveChild,
   sceneGetClassDocs,
   sceneRun,
-  sceneScreenshot,
   sceneGetSkeleton2dData,
   sceneSetBone2dRest,
 } from './tools/scene'
@@ -149,7 +147,6 @@ export const allTools = {
   scene_move_child: sceneMoveChild,
   scene_get_class_docs: sceneGetClassDocs,
   scene_run: sceneRun,
-  scene_screenshot: sceneScreenshot,
   scene_get_skeleton2d_data: sceneGetSkeleton2dData,
   scene_set_bone2d_rest: sceneSetBone2dRest,
 

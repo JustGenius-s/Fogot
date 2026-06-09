@@ -8,22 +8,18 @@
 #include "ai_chat_dock.h"
 
 #include "core/crypto/crypto_core.h"
-#include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/json.h"
 #include "core/io/resource_loader.h"
 #include "core/object/callable_mp.h"
 #include "core/object/script_language.h"
 #include "core/os/os.h"
-#include "editor/ai/shared/ai_shared_utils.h"
 #include "editor/ai/tools/ai_tool_rpc.h"
 #include "editor/ai/web/editor_web_view.h"
 #include "editor/debugger/editor_debugger_node.h"
 #include "editor/debugger/script_editor_debugger.h"
 #include "editor/editor_interface.h"
 #include "editor/gui/editor_file_dialog.h"
-#include "editor/run/editor_run.h"
-
 void AIChatDock::_bind_methods() {
 }
 
@@ -274,27 +270,6 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 		result = AIToolRPC::scene_get_class_docs(args);
 	} else if (p_tool_name == "scene_run") {
 		result = AIToolRPC::scene_run(args);
-	} else if (p_tool_name == "scene_screenshot") {
-		String check = AIToolRPC::scene_screenshot(args);
-		if (check.begins_with("Error:")) {
-			_js_call("onToolResult", {
-					"'" + _js_escape(p_request_id) + "'",
-					"'" + _js_escape(check) + "'",
-					"true",
-			});
-		} else {
-			String output_path = args.get("output_path", "");
-			Callable cb = callable_mp(this, &AIChatDock::_on_screenshot_result_v).bind(p_request_id, output_path);
-			bool ok = EditorRun::request_screenshot(cb);
-			if (!ok) {
-				_js_call("onToolResult", {
-						"'" + _js_escape(p_request_id) + "'",
-						"'Error: Failed to request screenshot. Ensure the game window is embedded in the editor.'",
-						"true",
-				});
-			}
-		}
-		return; // Result sent via callback or already sent for errors.
 	} else if (p_tool_name == "read_image") {
 		result = AIToolRPC::read_image(args);
 	} else if (p_tool_name == "scene_get_skeleton2d_data") {
@@ -346,119 +321,6 @@ void AIChatDock::_flush_debugger_errors() {
 	pending_debugger_errors.clear();
 
 	_js_call("onDebuggerErrors", { "'" + _js_escape(json_array) + "'" });
-}
-
-// ─── Screenshot callback (Variant wrapper) ─────────────────────
-// All params are Variant to survive any argument misalignment from the
-// debugger callback chain. Type validation happens here before any
-// implicit conversion (which would trigger to_int() on strings).
-// NOTE: Godot's callable_mp+bind appends bound args AFTER call args,
-// so param order is: call_args_first (w,h,path,rect), bind_args_last (request_id,output_path).
-
-void AIChatDock::_on_screenshot_result_v(const Variant &p_w, const Variant &p_h, const Variant &p_temp_path, const Variant &p_rect, const Variant &p_request_id, const Variant &p_output_path) {
-	print_line(vformat("[scene_screenshot] v-callback: w=%s h=%s path=%s rect=%s req_id=%s out=%s",
-		Variant::get_type_name(p_w.get_type()), Variant::get_type_name(p_h.get_type()),
-		Variant::get_type_name(p_temp_path.get_type()), Variant::get_type_name(p_rect.get_type()),
-		Variant::get_type_name(p_request_id.get_type()), Variant::get_type_name(p_output_path.get_type())));
-
-	bool types_ok = true;
-	if (p_w.get_type() != Variant::INT && p_w.get_type() != Variant::FLOAT) {
-		WARN_PRINT(vformat("[scene_screenshot] arg 0 (width) expected INT/FLOAT, got %s", Variant::get_type_name(p_w.get_type())));
-		types_ok = false;
-	}
-	if (p_h.get_type() != Variant::INT && p_h.get_type() != Variant::FLOAT) {
-		WARN_PRINT(vformat("[scene_screenshot] arg 1 (height) expected INT/FLOAT, got %s", Variant::get_type_name(p_h.get_type())));
-		types_ok = false;
-	}
-	if (p_temp_path.get_type() != Variant::STRING) {
-		WARN_PRINT(vformat("[scene_screenshot] arg 2 (temp_path) expected STRING, got %s", Variant::get_type_name(p_temp_path.get_type())));
-		types_ok = false;
-	}
-	if (p_rect.get_type() != Variant::RECT2I && p_rect.get_type() != Variant::NIL) {
-		WARN_PRINT(vformat("[scene_screenshot] arg 3 (rect) expected RECT2I, got %s", Variant::get_type_name(p_rect.get_type())));
-	}
-	if (p_request_id.get_type() != Variant::STRING) {
-		WARN_PRINT(vformat("[scene_screenshot] arg 4 (request_id) expected STRING, got %s", Variant::get_type_name(p_request_id.get_type())));
-		types_ok = false;
-	}
-	if (p_output_path.get_type() != Variant::STRING) {
-		WARN_PRINT(vformat("[scene_screenshot] arg 5 (output_path) expected STRING, got %s", Variant::get_type_name(p_output_path.get_type())));
-		types_ok = false;
-	}
-
-	String req_id = p_request_id;
-	String result;
-	bool is_error = false;
-
-	if (!types_ok) {
-		result = "Error: Screenshot callback received mismatched argument types. Check editor output for details.";
-		is_error = true;
-	} else {
-		int64_t w = p_w;
-		int64_t h = p_h;
-		String temp_path = p_temp_path;
-		String out_path = p_output_path;
-
-		if (!out_path.is_empty()) {
-			String safe_output = out_path;
-			normalize_project_path(safe_output);
-			// Ensure the parent directory exists before copying.
-			String parent_dir = safe_output.get_base_dir();
-			if (!parent_dir.is_empty() && !DirAccess::dir_exists_absolute(parent_dir)) {
-				Error mkdir_err = DirAccess::make_dir_recursive_absolute(parent_dir);
-				if (mkdir_err != OK) {
-					WARN_PRINT(vformat("[scene_screenshot] Failed to create directory '%s': %d", parent_dir, mkdir_err));
-				}
-			}
-			if (!FileAccess::exists(temp_path)) {
-				result = "Error: Source screenshot file not found: '" + temp_path + "'.";
-				is_error = true;
-			} else {
-				Error err = DirAccess::copy_absolute(temp_path, safe_output);
-				if (err != OK) {
-					result = "Error: Failed to copy screenshot to '" + safe_output + "'.";
-					is_error = true;
-				} else {
-					Dictionary d;
-					d["width"] = w;
-					d["height"] = h;
-					d["path"] = safe_output;
-					d["type"] = "image";
-					d["mimeType"] = "image/png";
-					// Read the image and include base64 data so the
-					// chat UI can display it without a separate read_image call.
-					Ref<FileAccess> f_img = FileAccess::open(safe_output, FileAccess::READ);
-					if (f_img.is_valid()) {
-						PackedByteArray img_data = f_img->get_buffer(f_img->get_length());
-						f_img->close();
-						d["base64"] = CryptoCore::b64_encode_str(img_data.ptr(), img_data.size());
-					}
-					result = JSON::stringify(d);
-				}
-			}
-		} else {
-			Dictionary d;
-			d["width"] = w;
-			d["height"] = h;
-			d["path"] = temp_path;
-			d["type"] = "image";
-			d["mimeType"] = "image/png";
-			Ref<FileAccess> f_img = FileAccess::open(temp_path, FileAccess::READ);
-			if (f_img.is_valid()) {
-				PackedByteArray img_data = f_img->get_buffer(f_img->get_length());
-				f_img->close();
-				d["base64"] = CryptoCore::b64_encode_str(img_data.ptr(), img_data.size());
-			}
-			result = JSON::stringify(d);
-		}
-	}
-
-	print_line(vformat("[scene_screenshot] result: is_error=%s result=%s", is_error, result));
-	_js_call("onToolResult", {
-			"'" + _js_escape(req_id) + "'",
-			"'" + _js_escape(result) + "'",
-			is_error ? "true" : "false",
-	});
 }
 
 // ─── Constructor ──────────────────────────────────────────────────

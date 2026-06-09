@@ -47,9 +47,6 @@ class AIChatDock : public EditorDock {
 	// ─── Tool RPC ───────────────────────────────────────────────
 	void _handle_call_tool(const String &p_request_id, const String &p_tool_name, const String &p_args_json);
 
-	// ─── Async screenshot callback ──────────────────────────────
-	void _on_screenshot_result_v(const Variant &p_w, const Variant &p_h, const Variant &p_temp_path, const Variant &p_rect, const Variant &p_request_id, const Variant &p_output_path);
-
 	// ─── Debugger error forwarding ──────────────────────────────
 	Vector<String> pending_debugger_errors;
 	bool flush_scheduled = false;
