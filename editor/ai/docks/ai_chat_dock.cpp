@@ -276,6 +276,12 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 		result = AIToolRPC::scene_get_skeleton2d_data(args);
 	} else if (p_tool_name == "scene_set_bone2d_rest") {
 		result = AIToolRPC::scene_set_bone2d_rest(args);
+	} else if (p_tool_name == "scene_call_method") {
+		result = AIToolRPC::scene_call_method(args);
+	} else if (p_tool_name == "scene_connect_signal") {
+		result = AIToolRPC::scene_connect_signal(args);
+	} else if (p_tool_name == "scene_instance_scene") {
+		result = AIToolRPC::scene_instance_scene(args);
 	} else if (p_tool_name == "mention_suggestions") {
 		result = AIToolRPC::mention_suggestions(args);
 	} else {

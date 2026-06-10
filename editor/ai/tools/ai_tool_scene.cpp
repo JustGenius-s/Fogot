@@ -11,10 +11,12 @@
 
 #include "core/io/file_access.h"
 #include "core/io/json.h"
+#include "core/io/resource_loader.h"
 #include "core/object/class_db.h"
 #include "editor/doc/editor_help.h"
 #include "editor/editor_interface.h"
 #include "editor/editor_undo_redo_manager.h"
+#include "scene/resources/packed_scene.h"
 
 // --- scene_list_nodes ---
 
@@ -475,6 +477,149 @@ String AIToolRPC::scene_set_bone2d_rest(const Dictionary &p_args) {
 	undo->commit_action();
 
 	return "OK: Set rest for Bone2D '" + bone->get_name() + "'.";
+}
+
+// --- scene_call_method ---
+
+String AIToolRPC::scene_call_method(const Dictionary &p_args) {
+	String path = p_args.get("path", "");
+	String method = p_args.get("method", "");
+	String args_json = p_args.get("args", "[]");
+
+	if (method.is_empty()) {
+		return "Error: 'method' is required.";
+	}
+
+	String error;
+	Node *node = resolve_node(path, &error);
+	if (!node) {
+		return error;
+	}
+
+	Variant ret;
+	String call_error = call_method_from_json(node, method, args_json, &ret);
+	if (!call_error.is_empty()) {
+		return call_error;
+	}
+
+	Dictionary result;
+	result["path"] = path;
+	result["method"] = method;
+	if (ret.get_type() != Variant::NIL) {
+		result["return"] = JSON::stringify(ret);
+	}
+	return "OK: " + JSON::stringify(result);
+}
+
+// --- scene_connect_signal ---
+
+String AIToolRPC::scene_connect_signal(const Dictionary &p_args) {
+	String source_path = p_args.get("source_path", "");
+	String signal_name = p_args.get("signal", "");
+	String target_path = p_args.get("target_path", "");
+	String method_name = p_args.get("method", "");
+
+	if (signal_name.is_empty()) {
+		return "Error: 'signal' is required.";
+	}
+	if (method_name.is_empty()) {
+		return "Error: 'method' is required.";
+	}
+
+	String error;
+	Node *source = resolve_node(source_path, &error);
+	if (!source) {
+		return error;
+	}
+	Node *target = resolve_node(target_path, &error);
+	if (!target) {
+		return error;
+	}
+
+	// Validate signal exists.
+	if (!source->has_signal(signal_name)) {
+		return "Error: Node '" + source_path + "' has no signal '" + signal_name + "'.";
+	}
+
+	// Validate target has the method.
+	if (!target->has_method(method_name)) {
+		return "Error: Target node '" + target_path + "' has no method '" + method_name + "'.";
+	}
+
+	// Check if already connected.
+	if (source->is_connected(signal_name, Callable(target, method_name))) {
+		return "Error: Signal '" + signal_name + "' is already connected to '" + target_path + "." + method_name + "'.";
+	}
+
+	EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
+	undo->create_action("Connect " + signal_name + " to " + target_path + "." + method_name);
+	undo->add_do_method(source, "connect", signal_name, Callable(target, method_name));
+	undo->add_undo_method(source, "disconnect", signal_name, Callable(target, method_name));
+	undo->commit_action();
+
+	return "OK: Connected " + source_path + "." + signal_name + " -> " + target_path + "." + method_name;
+}
+
+// --- scene_instance_scene ---
+
+String AIToolRPC::scene_instance_scene(const Dictionary &p_args) {
+	String parent_path = p_args.get("parent_path", ".");
+	String scene_path = p_args.get("scene_path", "");
+	String node_name = p_args.get("node_name", "");
+
+	if (scene_path.is_empty()) {
+		return "Error: 'scene_path' is required.";
+	}
+
+	if (!FileAccess::exists(scene_path)) {
+		return "Error: Scene file not found at '" + scene_path + "'.";
+	}
+
+	Ref<PackedScene> packed = ResourceLoader::load(scene_path, "PackedScene");
+	if (!packed.is_valid()) {
+		return "Error: Failed to load scene '" + scene_path + "'.";
+	}
+
+	Node *instance = packed->instantiate();
+	if (!instance) {
+		return "Error: Failed to instantiate scene '" + scene_path + "'.";
+	}
+
+	if (!node_name.is_empty()) {
+		instance->set_name(node_name);
+	}
+
+	String error;
+	Node *parent = resolve_node(parent_path, &error);
+	if (!parent) {
+		memdelete(instance);
+		return error;
+	}
+
+	// Check for name collision.
+	if (parent->has_node(NodePath(instance->get_name()))) {
+		String name = instance->get_name();
+		memdelete(instance);
+		return "Error: Node '" + name + "' already exists under '" + parent_path + "'.";
+	}
+
+	EditorUndoRedoManager *undo = EditorUndoRedoManager::get_singleton();
+	undo->create_action("Instance scene '" + scene_path + "'");
+	undo->add_do_method(parent, "add_child", instance);
+	undo->add_do_reference(instance);
+	undo->add_undo_method(parent, "remove_child", instance);
+	undo->commit_action();
+
+	// Ensure ownership for serialization.
+	Node *scene_root = EditorInterface::get_singleton()->get_edited_scene_root();
+	if (scene_root) {
+		set_owner_recursive(instance, scene_root);
+	}
+
+	// Store the scene file reference so it saves as an instance.
+	instance->set_scene_file_path(scene_path);
+
+	return "OK: Instanced '" + scene_path + "' as " + String(instance->get_path()).trim_prefix("./");
 }
 
 // --- mention_suggestions ---

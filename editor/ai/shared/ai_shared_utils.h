@@ -76,3 +76,14 @@ Dictionary bone2d_to_dict(Bone2D *p_bone);
 /// PackedColorArray, loaded resources). Returns the value unchanged when it
 /// already matches the target or no rule applies.
 Variant coerce_json_to_type(const Variant &p_value, Variant::Type p_target);
+
+/// Call a method on an Object using a JSON-encoded argument array.
+/// Parses args_json as a JSON Array, coerces each element to the method's
+/// parameter types via coerce_json_to_type, and calls the method.
+/// On success returns OK and writes the return value to r_ret.
+/// On failure returns an error string (never empty).
+String call_method_from_json(Object *p_obj, const String &p_method, const String &p_args_json, Variant *r_ret = nullptr);
+
+/// Recursively set the owner of p_node and all its descendants to p_owner.
+/// Useful after adding a subtree to ensure it serializes with the scene.
+void set_owner_recursive(Node *p_node, Node *p_owner);

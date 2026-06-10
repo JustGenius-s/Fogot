@@ -143,3 +143,47 @@ export const sceneSetBone2dRest = tool({
   }),
   execute: async (args) => bridgeRPC('scene_set_bone2d_rest', args),
 })
+
+export const sceneCallMethod = tool({
+  description: [
+    'Call a method on a scene node in the editor.',
+    'Use scene_get_class_docs to discover available methods.',
+    'Arguments are passed as a JSON array and auto-coerced to match parameter types.',
+    'Examples: AnimationPlayer play("idle"), Node add_to_group("enemies"), TileMapLayer set_cell(...).',
+  ].join('\n'),
+  inputSchema: z.object({
+    path: z.string().describe('Node path relative to scene root.'),
+    method: z.string().describe('Method name to call (e.g. "play", "add_to_group", "set_cell").'),
+    args: z.string().optional().describe('JSON array of arguments. Defaults to "[]". E.g. \'["idle"]\' or \'[{"x":0,"y":0}, 1, {"x":0,"y":0}]\'.'),
+  }),
+  execute: async (args) => bridgeRPC('scene_call_method', { ...args, args: args.args ?? '[]' }),
+})
+
+export const sceneConnectSignal = tool({
+  description: [
+    'Connect a signal from one node to a method on another node (undoable).',
+    'The target node must have the specified method (typically from an attached script).',
+    'Use scene_get_node to inspect available signals on the source node.',
+  ].join('\n'),
+  inputSchema: z.object({
+    source_path: z.string().describe('Path of the node emitting the signal.'),
+    signal: z.string().describe('Signal name (e.g. "pressed", "body_entered", "timeout").'),
+    target_path: z.string().describe('Path of the node receiving the signal.'),
+    method: z.string().describe('Method name on the target node to call when the signal fires.'),
+  }),
+  execute: async (args) => bridgeRPC('scene_connect_signal', args),
+})
+
+export const sceneInstanceScene = tool({
+  description: [
+    'Instance a PackedScene (.tscn/.scn) file as a child of a node (undoable).',
+    'This is how you add prefabs/components to the scene — equivalent to dragging a .tscn into the scene tree.',
+    'The instanced node retains its link to the source scene file.',
+  ].join('\n'),
+  inputSchema: z.object({
+    parent_path: z.string().describe('Parent node path relative to scene root.'),
+    scene_path: z.string().describe('Path to the scene file (e.g. "res://prefabs/enemy.tscn").'),
+    node_name: z.string().optional().describe('Optional name override for the instanced root node.'),
+  }),
+  execute: async (args) => bridgeRPC('scene_instance_scene', args),
+})

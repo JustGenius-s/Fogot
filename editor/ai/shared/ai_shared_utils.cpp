@@ -8,6 +8,7 @@
 #include "ai_shared_utils.h"
 
 #include "core/io/dir_access.h"
+#include "core/io/json.h"
 #include "core/io/resource_loader.h"
 #include "core/variant/dictionary.h"
 #include "editor/editor_interface.h"
@@ -487,4 +488,71 @@ Variant coerce_json_to_type(const Variant &p_value, Variant::Type p_target) {
 			break;
 	}
 	return p_value;
+}
+
+String call_method_from_json(Object *p_obj, const String &p_method, const String &p_args_json, Variant *r_ret) {
+	ERR_FAIL_NULL_V(p_obj, "Error: Object is null.");
+
+	if (!p_obj->has_method(p_method)) {
+		return "Error: Object has no method '" + p_method + "'.";
+	}
+
+	Variant parsed = JSON::parse_string(p_args_json);
+	if (parsed.get_type() != Variant::ARRAY) {
+		return "Error: 'args' must be a JSON array.";
+	}
+	Array args_array = parsed;
+
+	// Coerce arguments by inspecting the method's parameter types.
+	MethodInfo mi;
+	bool found_method = false;
+	List<MethodInfo> methods;
+	p_obj->get_method_list(&methods);
+	for (const MethodInfo &m : methods) {
+		if (m.name == p_method) {
+			mi = m;
+			found_method = true;
+			break;
+		}
+	}
+
+	if (found_method) {
+		for (int i = 0; i < args_array.size() && i < mi.arguments.size(); i++) {
+			args_array[i] = coerce_json_to_type(args_array[i], mi.arguments[i].type);
+		}
+	}
+
+	Variant ret;
+	Callable::CallError ce;
+	const Variant **argptrs = nullptr;
+	Vector<Variant> arg_storage;
+	Vector<const Variant *> argv;
+	if (args_array.size() > 0) {
+		arg_storage.resize(args_array.size());
+		argv.resize(args_array.size());
+		for (int i = 0; i < args_array.size(); i++) {
+			arg_storage.write[i] = args_array[i];
+			argv.write[i] = &arg_storage[i];
+		}
+		argptrs = (const Variant **)argv.ptr();
+	}
+
+	ret = p_obj->callp(p_method, argptrs, args_array.size(), ce);
+
+	if (ce.error != Callable::CallError::CALL_OK) {
+		return "Error: Method call failed (error code " + itos(ce.error) +
+				", argument " + itos(ce.expected) + ").";
+	}
+
+	if (r_ret) {
+		*r_ret = ret;
+	}
+	return String();
+}
+
+void set_owner_recursive(Node *p_node, Node *p_owner) {
+	p_node->set_owner(p_owner);
+	for (int i = 0; i < p_node->get_child_count(); i++) {
+		set_owner_recursive(p_node->get_child(i), p_owner);
+	}
 }

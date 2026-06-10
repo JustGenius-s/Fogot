@@ -107,4 +107,17 @@ String scene_get_skeleton2d_data(const Dictionary &p_args);
 ///       rest (JSON Transform2D: {x:{x,y}, y:{x,y}, origin:{x,y}}).
 String scene_set_bone2d_rest(const Dictionary &p_args);
 
+/// Call a method on a scene node.
+/// Args: path — node path, method — method name, args — JSON array of arguments.
+/// Returns JSON with the method's return value (if any).
+String scene_call_method(const Dictionary &p_args);
+
+/// Connect a signal from one node to a method on another node (undoable).
+/// Args: source_path, signal, target_path, method.
+String scene_connect_signal(const Dictionary &p_args);
+
+/// Instance a PackedScene (.tscn/.scn) as a child of a node (undoable).
+/// Args: parent_path, scene_path (res://...), node_name (optional override).
+String scene_instance_scene(const Dictionary &p_args);
+
 } // namespace AIToolRPC

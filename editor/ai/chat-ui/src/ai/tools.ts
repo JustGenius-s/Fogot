@@ -38,6 +38,9 @@ export {
   sceneRun,
   sceneGetSkeleton2dData,
   sceneSetBone2dRest,
+  sceneCallMethod,
+  sceneConnectSignal,
+  sceneInstanceScene,
 } from './tools/scene'
 
 export {
@@ -95,6 +98,9 @@ import {
   sceneRun,
   sceneGetSkeleton2dData,
   sceneSetBone2dRest,
+  sceneCallMethod,
+  sceneConnectSignal,
+  sceneInstanceScene,
 } from './tools/scene'
 
 import {
@@ -149,6 +155,9 @@ export const allTools = {
   scene_run: sceneRun,
   scene_get_skeleton2d_data: sceneGetSkeleton2dData,
   scene_set_bone2d_rest: sceneSetBone2dRest,
+  scene_call_method: sceneCallMethod,
+  scene_connect_signal: sceneConnectSignal,
+  scene_instance_scene: sceneInstanceScene,
 
   // Image operations
   crop_image: cropImage,
