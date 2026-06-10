@@ -1,5 +1,51 @@
 # Changelog
 
+## Fogot AI — Editor Enhancements
+
+> 基于 Godot 4.7 beta 的 AI 增强编辑功能。
+
+### 2026-06
+
+- **图像读取自动压缩**：`read_image` 工具新增自动缩放和格式转换（PNG/WebP → JPEG），最长边限制 1024px，防止 API 载荷超限。
+- **场景管理工具**：`scene_call_method`、`scene_connect_signal`、`scene_instance_scene`，支持在运行时动态操作场景节点。
+- **Skeleton2D 工具**：`scene_skeleton_get_data`、`scene_skeleton_set_bone_rest`，让 AI 能读取和修改骨骼数据。
+- **属性类型强制转换**：JSON-parsed Variant 自动转换为节点属性预期类型（Vector2/3、Color、packed arrays 等）。
+
+### 2026-05
+
+- **@ 引用功能**：在聊天中 `@` 引用场景节点、脚本文件，自动解析上下文。
+- **图像读取工具**：`read_image` 工具将项目图像转为多模态内容，让 LLM "看见" 像素。
+- **场景截图**：AI 可触发编辑器截图并分析 UI 布局。
+
+### 2026-04
+
+- **AI 技能系统**：支持加载/切换技能，内置技能管理 Popover。
+- **指令文本渲染**：对话中高亮标记 directive 语法。
+- **图像生成改进**：支持 multiple reference images for img2img，新增分辨率/质量设置。
+
+### 2026-03
+
+- **资产生成与画廊**：AI 生成的图像可保存到项目资源库，支持画廊浏览。
+- **Image Generation Settings**：统一的图像生成参数面板（分辨率、质量）。
+- **认证模式支持**：图像模型支持认证模式切换。
+
+### 2026-02
+
+- **文件操作工具重构**：`edit_file`（字符串替换式）、`read_file`、`write_file` 等。
+- **Delegate Task 工具**：子 Agent 任务委派，支持可折叠输出和子 Agent 指示器。
+- **pnpm 迁移**：包管理器从 npm 迁移至 pnpm。
+
+### 2026-01
+
+- **上下文管理与摘要**：对话上下文自动摘要与压缩。
+- **GDScript 文档工具**：`docs` 工具查阅 GDScript 类文档。
+- **WebView2 支持**：Windows 平台 WebView2 (Edge Chromium) 实现。
+- **初始提交**：Fogot — Godot 引擎 AI 编辑器 fork。
+
+---
+
+## Godot Upstream Changelog
+
 This file lists all changes made between the current feature branch and the
 previous feature release. It is equivalent to the listings on our
 [interactive changelog](https://godotengine.github.io/godot-interactive-changelog/).

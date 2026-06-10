@@ -42,7 +42,7 @@
 | 组件 | 技术 |
 |------|------|
 | 引擎基座 | Godot 4.7 beta, C++, SCons |
-| AI 前端 | React 18, TypeScript, Vite 6 |
+| AI 前端 | React 19, TypeScript, Vite 8 |
 | AI SDK | Vercel AI SDK 6, `@ai-sdk/openai-compatible` |
 | 聊天 UI | `@assistant-ui/react`, shadcn/ui |
 | 样式 | Tailwind CSS 4 |
@@ -53,33 +53,50 @@
 ```
 editor/ai/
 ├── docks/              # AIChatDock — WebView 宿主与 JS↔C++ 桥接
-├── tools/              # C++ Tool RPC 实现（文件读写、搜索、命令执行等）
+├── tools/              # C++ Tool RPC 实现（文件操作、场景管理、图像读取等）
 ├── web/                # EditorWebView 平台抽象层
 │   ├── editor_web_view_macos.mm      # macOS WKWebView 实现
 │   └── editor_web_view_windows.cpp   # Windows WebView2 实现
 └── chat-ui/            # React 前端应用
     └── src/
-        ├── ai/         # Agent 定义与工具声明
-        ├── components/ # UI 组件（shadcn + 自定义）
-        ├── lib/        # 工具函数与线程存储
+        ├── ai/         # Agent 定义、工具声明、上下文管理、技能系统
+        │   ├── agents.ts           # Agent 配置
+        │   ├── tools/              # 工具实现（files, scene, image, docs, delegate, plan, skill 等）
+        │   ├── context-manager.ts  # 对话上下文管理
+        │   ├── mentions.ts         # @ 引用（节点/脚本/场景）
+        │   └── skills.ts           # 技能加载与切换
+        ├── components/ # UI 组件
+        │   ├── assistant-ui/       # AI 聊天核心组件
+        │   ├── custom/             # 自定义工具渲染 UI
+        │   ├── assets/             # 资产生成与画廊
+        │   └── ui/                 # shadcn/ui 基础组件
+        ├── lib/        # 工具函数、线程存储、图像传输
         ├── bridge.ts   # C++↔JS 桥接协议
         └── App.tsx     # 应用入口
 ```
 
-### C++ Tool RPC
+### AI 工具清单
 
-AI 可通过 RPC 调用以下工具操作项目文件：
+AI 可通过 RPC 调用以下工具操作项目：
 
-| 工具 | 功能 |
-|------|------|
-| `read_file` | 读取项目文件 |
-| `write_file` | 写入文件 |
-| `edit_file` | 字符串替换式编辑 |
-| `list_files` | 列出目录内容 |
-| `delete_file` | 删除文件 |
-| `copy_file` / `move_file` | 复制 / 移动文件 |
-| `search_files` | 文本搜索 |
-| `execute_command` | 执行 shell 命令 |
+| 分类 | 工具 | 功能 |
+|------|------|------|
+| **文件操作** | `read_file` / `write_file` | 读取 / 写入项目文件 |
+| | `edit_file` | 字符串替换式精确编辑 |
+| | `list_files` / `search_files` | 目录浏览 / 文本搜索 |
+| | `delete_file` / `copy_file` / `move_file` | 删除 / 复制 / 移动文件 |
+| | `execute_command` | 执行 shell 命令 |
+| **场景管理** | `scene_node_tree` | 获取场景节点层级树 |
+| | `scene_node_get_property` / `set_property` | 读写节点属性 |
+| | `scene_call_method` | 调用节点方法 |
+| | `scene_connect_signal` | 连接节点信号 |
+| | `scene_instance_scene` | 实例化场景 |
+| | `scene_skeleton_get_data` / `set_bone_rest` | Skeleton2D 骨骼数据操作 |
+| **图像处理** | `read_image` | 读取图像并转为多模态内容（自动压缩） |
+| | `generate_image` | AI 图像生成（支持 img2img、分辨率/质量配置） |
+| **知识** | `docs` | 查阅 GDScript 类文档 |
+| **编排** | `delegate_task` / `plan` | 子任务委派与执行计划 |
+| **技能** | `skill` | 加载/切换 AI 技能 |
 
 ## 构建
 
@@ -107,15 +124,15 @@ scons platform=<platform> target=editor
 
 ```bash
 cd editor/ai/chat-ui
-npm install
-npm run build:fast    # 产出单文件 dist/index.html
+pnpm install
+pnpm run build:fast    # 产出单文件 dist/index.html
 ```
 
 ### 4. 开发模式（热重载）
 
 ```bash
 # 终端 1：启动 Vite 开发服务器
-cd editor/ai/chat-ui && npm run dev
+cd editor/ai/chat-ui && pnpm run dev
 
 # 终端 2：设置环境变量后启动编辑器
 # macOS / Linux
