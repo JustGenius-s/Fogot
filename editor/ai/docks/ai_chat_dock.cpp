@@ -252,6 +252,8 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 		result = AIToolRPC::execute_command(args);
 	} else if (p_tool_name == "get_class_docs") {
 		result = AIToolRPC::get_class_docs(args);
+	} else if (p_tool_name == "get_script_errors") {
+		result = AIToolRPC::get_script_errors(args);
 	} else if (p_tool_name == "scene_list_nodes") {
 		result = AIToolRPC::scene_list_nodes(args);
 	} else if (p_tool_name == "scene_get_node") {
@@ -270,6 +272,8 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 		result = AIToolRPC::scene_get_class_docs(args);
 	} else if (p_tool_name == "scene_run") {
 		result = AIToolRPC::scene_run(args);
+	} else if (p_tool_name == "scene_open") {
+		result = AIToolRPC::scene_open(args);
 	} else if (p_tool_name == "read_image") {
 		result = AIToolRPC::read_image(args);
 	} else if (p_tool_name == "scene_get_skeleton2d_data") {

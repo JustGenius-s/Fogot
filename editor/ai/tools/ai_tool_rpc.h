@@ -46,6 +46,11 @@ String execute_command(const Dictionary &p_args);
 /// Supports listing all classes, brief overviews, and full API details.
 String get_class_docs(const Dictionary &p_args);
 
+/// Validate a script file and return syntax errors and warnings.
+/// Args: path — res:// path to the script file (.gd, .cs, etc.).
+/// Returns JSON: { path, language, valid, errors: [{line,column,message}], warnings: [{start_line,end_line,code,message}] }
+String get_script_errors(const Dictionary &p_args);
+
 /// List the current scene node tree as JSON.
 /// Args: path (optional) — subtree root, defaults to scene root.
 String scene_list_nodes(const Dictionary &p_args);
@@ -81,6 +86,10 @@ String scene_get_class_docs(const Dictionary &p_args);
 /// Run a scene (starts a new game process, or re-runs the current scene).
 /// Args: scene_path (optional) — path to the .tscn/.scn file. Defaults to the currently open scene.
 String scene_run(const Dictionary &p_args);
+
+/// Open a scene file in the editor for editing.
+/// Args: scene_path — path to the .tscn/.scn file.
+String scene_open(const Dictionary &p_args);
 
 /// Read an image file and return base64 + dimensions for the AI to "see" it.
 /// Args: path — res:// path to the image file.

@@ -8,7 +8,9 @@
 #include "ai_tool_rpc.h"
 #include "../shared/ai_shared_utils.h"
 
+#include "core/io/file_access.h"
 #include "core/io/json.h"
+#include "core/object/script_language.h"
 #include "editor/doc/editor_help.h"
 
 String AIToolRPC::get_class_docs(const Dictionary &p_args) {
@@ -165,6 +167,77 @@ String AIToolRPC::get_class_docs(const Dictionary &p_args) {
 		}
 		result["constants"] = constants;
 	}
+
+	return JSON::stringify(result);
+}
+
+// --- get_script_errors ---
+
+String AIToolRPC::get_script_errors(const Dictionary &p_args) {
+	String path = p_args.get("path", "");
+
+	if (path.is_empty()) {
+		return "Error: 'path' is required.";
+	}
+
+	if (!path.begins_with("res://")) {
+		path = "res://" + path;
+	}
+
+	if (!FileAccess::exists(path)) {
+		return "Error: File not found: '" + path + "'.";
+	}
+
+	// Read the script source.
+	Ref<FileAccess> f = FileAccess::open(path, FileAccess::READ);
+	if (f.is_null()) {
+		return "Error: Cannot open file: '" + path + "'.";
+	}
+	String source = f->get_as_utf8_string();
+	f->close();
+
+	// Find the appropriate language for this file extension.
+	String ext = path.get_extension().to_lower();
+	ScriptLanguage *lang = ScriptServer::get_language_for_extension(ext);
+	if (!lang) {
+		return "Error: No script language found for extension '." + ext + "'.";
+	}
+
+	// Validate the script.
+	List<ScriptLanguage::ScriptError> errors;
+	List<ScriptLanguage::Warning> warnings;
+	lang->validate(source, path, nullptr, &errors, &warnings);
+
+	// Build result.
+	Dictionary result;
+	result["path"] = path;
+	result["language"] = lang->get_name();
+
+	Array err_array;
+	for (const ScriptLanguage::ScriptError &e : errors) {
+		Dictionary ed;
+		ed["line"] = e.line;
+		ed["column"] = e.column;
+		ed["message"] = e.message;
+		if (!e.path.is_empty() && e.path != path) {
+			ed["path"] = e.path;
+		}
+		err_array.push_back(ed);
+	}
+	result["errors"] = err_array;
+
+	Array warn_array;
+	for (const ScriptLanguage::Warning &w : warnings) {
+		Dictionary wd;
+		wd["start_line"] = w.start_line;
+		wd["end_line"] = w.end_line;
+		wd["code"] = w.string_code;
+		wd["message"] = w.message;
+		warn_array.push_back(wd);
+	}
+	result["warnings"] = warn_array;
+
+	result["valid"] = errors.is_empty();
 
 	return JSON::stringify(result);
 }

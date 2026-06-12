@@ -47,3 +47,15 @@ export const getDebuggerErrors = tool({
     })
   },
 })
+
+export const getScriptErrors = tool({
+  description: [
+    'Validate a script file and return syntax errors and warnings without running the game.',
+    'Use this after writing or editing a .gd script to check for syntax/type errors.',
+    'Returns errors (line, column, message) and warnings (line range, code, message).',
+  ].join('\n'),
+  inputSchema: z.object({
+    path: z.string().describe('Path to the script file (e.g. "res://scripts/player.gd").'),
+  }),
+  execute: async (args) => bridgeRPC('get_script_errors', args),
+})

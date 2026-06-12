@@ -118,6 +118,18 @@ export const sceneRun = tool({
   execute: async (args) => bridgeRPC('scene_run', args),
 })
 
+export const sceneOpen = tool({
+  description: [
+    'Open a scene file in the editor for editing.',
+    'Use this before scene_set_property / scene_create_node when you need to modify a scene other than the currently open one.',
+    'If the scene is already open, this is a no-op.',
+  ].join('\n'),
+  inputSchema: z.object({
+    scene_path: z.string().describe('Path to the scene file (e.g. "res://scenes/level2.tscn").'),
+  }),
+  execute: async (args) => bridgeRPC('scene_open', args),
+})
+
 export const sceneGetSkeleton2dData = tool({
   description: [
     'Get the full bone hierarchy and transforms of a Skeleton2D node.',

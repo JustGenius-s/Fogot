@@ -36,6 +36,7 @@ export {
   sceneMoveChild,
   sceneGetClassDocs,
   sceneRun,
+  sceneOpen,
   sceneGetSkeleton2dData,
   sceneSetBone2dRest,
   sceneCallMethod,
@@ -52,6 +53,7 @@ export {
 export {
   getClassDocs,
   getDebuggerErrors,
+  getScriptErrors,
 } from './tools/docs'
 
 export {
@@ -96,6 +98,7 @@ import {
   sceneMoveChild,
   sceneGetClassDocs,
   sceneRun,
+  sceneOpen,
   sceneGetSkeleton2dData,
   sceneSetBone2dRest,
   sceneCallMethod,
@@ -112,6 +115,7 @@ import {
 import {
   getClassDocs,
   getDebuggerErrors,
+  getScriptErrors,
 } from './tools/docs'
 
 import {
@@ -153,6 +157,7 @@ export const allTools = {
   scene_move_child: sceneMoveChild,
   scene_get_class_docs: sceneGetClassDocs,
   scene_run: sceneRun,
+  scene_open: sceneOpen,
   scene_get_skeleton2d_data: sceneGetSkeleton2dData,
   scene_set_bone2d_rest: sceneSetBone2dRest,
   scene_call_method: sceneCallMethod,
@@ -167,6 +172,7 @@ export const allTools = {
   // Docs & debug
   get_class_docs: getClassDocs,
   get_debugger_errors: getDebuggerErrors,
+  get_script_errors: getScriptErrors,
 
   // Plan mode
   exit_plan_mode: exitPlanMode,

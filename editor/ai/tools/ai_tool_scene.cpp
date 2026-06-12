@@ -382,6 +382,32 @@ String AIToolRPC::scene_get_class_docs(const Dictionary &p_args) {
 	return JSON::stringify(result);
 }
 
+// --- scene_open ---
+
+String AIToolRPC::scene_open(const Dictionary &p_args) {
+	String scene_path = p_args.get("scene_path", "");
+
+	if (scene_path.is_empty()) {
+		return "Error: 'scene_path' is required.";
+	}
+
+	if (!FileAccess::exists(scene_path)) {
+		return "Error: Scene file not found at '" + scene_path + "'.";
+	}
+
+	EditorInterface *ei = EditorInterface::get_singleton();
+
+	// Check if this scene is already the active edited scene.
+	Node *current_root = ei->get_edited_scene_root();
+	if (current_root && current_root->get_scene_file_path() == scene_path) {
+		return "OK: Scene '" + scene_path + "' is already open.";
+	}
+
+	ei->open_scene_from_path(scene_path);
+
+	return "OK: Opened scene '" + scene_path + "'.";
+}
+
 // --- scene_run ---
 
 String AIToolRPC::scene_run(const Dictionary &p_args) {
