@@ -343,6 +343,35 @@ void scan_project_files(const String &p_dir, const String &p_ext, Array &r_out, 
 	da->list_dir_end();
 }
 
+void scan_project_folders(const String &p_dir, Array &r_out, int p_depth) {
+	if (p_depth > 10) {
+		return;
+	}
+	Ref<DirAccess> da = DirAccess::open(p_dir);
+	if (da.is_null()) {
+		return;
+	}
+
+	da->list_dir_begin();
+	String item = da->get_next();
+	while (!item.is_empty()) {
+		if (item.begins_with(".") || item == "addons") {
+			item = da->get_next();
+			continue;
+		}
+		String full = p_dir.path_join(item);
+		if (da->current_is_dir()) {
+			Dictionary d;
+			d["path"] = full;
+			d["name"] = item;
+			r_out.push_back(d);
+			scan_project_folders(full, r_out, p_depth + 1);
+		}
+		item = da->get_next();
+	}
+	da->list_dir_end();
+}
+
 Transform2D parse_transform2d(const Dictionary &p_dict) {
 	Transform2D t;
 	if (p_dict.has("x") && p_dict.has("y") && p_dict.has("origin")) {

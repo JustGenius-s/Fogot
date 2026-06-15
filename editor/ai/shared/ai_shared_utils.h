@@ -59,6 +59,10 @@ void collect_nodes_flat(Node *p_node, Node *p_root, Array &r_out);
 /// Results are appended to r_out as Dictionaries with: path, name.
 void scan_project_files(const String &p_dir, const String &p_ext, Array &r_out, int p_depth = 0);
 
+/// Recursively scan a project directory for subdirectories.
+/// Results are appended to r_out as Dictionaries with: path, name.
+void scan_project_folders(const String &p_dir, Array &r_out, int p_depth = 0);
+
 /// Parse a JSON Dictionary into a Transform2D (columns layout).
 Transform2D parse_transform2d(const Dictionary &p_dict);
 

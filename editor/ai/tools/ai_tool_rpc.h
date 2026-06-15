@@ -110,10 +110,10 @@ String scene_open(const Dictionary &p_args);
 String read_image(const Dictionary &p_args);
 
 
-/// Return a flat list of scene nodes, scene files, and script files
+/// Return a flat list of scene nodes, scene files, script files, and folders
 /// for the @ mention autocomplete popover.
 /// Args: none.
-/// Returns JSON: { nodes: [{path,type,hasScript}], scenes: [{path,name}], scripts: [{path,name}] }
+/// Returns JSON: { nodes: [{path,type,hasScript}], scenes: [{path,name}], scripts: [{path,name}], folders: [{path,name}] }
 String mention_suggestions(const Dictionary &p_args);
 
 /// Skeleton2D tools — direct scene content editing in the 2D skeleton tree.

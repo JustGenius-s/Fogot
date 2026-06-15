@@ -11,7 +11,7 @@ import { useAuiState } from '@assistant-ui/react'
 import type { TextMessagePartComponent, Unstable_DirectiveFormatter } from '@assistant-ui/react'
 import { unstable_defaultDirectiveFormatter } from '@assistant-ui/react'
 import { cn } from '@/lib/utils'
-import { SparklesIcon, GitBranchIcon, BoxIcon, FileCodeIcon } from 'lucide-react'
+import { SparklesIcon, GitBranchIcon, BoxIcon, FileCodeIcon, FolderIcon } from 'lucide-react'
 
 // ─── Per-type styling ─────────────────────────────────────────────
 
@@ -19,6 +19,7 @@ const TYPE_STYLES: Record<string, string> = {
   node: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
   scene: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
   script: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+  folder: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
 }
 
 const DEFAULT_CHIP_CLS = 'bg-primary/10 text-primary'
@@ -27,6 +28,7 @@ const TYPE_ICONS: Record<string, FC<{ className?: string }>> = {
   node: GitBranchIcon,
   scene: BoxIcon,
   script: FileCodeIcon,
+  folder: FolderIcon,
 }
 
 // ─── Chip ─────────────────────────────────────────────────────────

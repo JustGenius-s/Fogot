@@ -9,7 +9,7 @@
 import { unstable_defaultDirectiveFormatter } from '@assistant-ui/react'
 import { bridgeRPC } from '@/bridge'
 
-export type MentionKind = 'node' | 'scene' | 'script'
+export type MentionKind = 'node' | 'scene' | 'script' | 'folder'
 
 export interface Mention {
   kind: MentionKind
@@ -17,7 +17,7 @@ export interface Mention {
   id: string
 }
 
-const MENTION_TYPES = new Set<string>(['node', 'scene', 'script'])
+const MENTION_TYPES = new Set<string>(['node', 'scene', 'script', 'folder'])
 
 /**
  * Extract all @ mention directives from a message text string.
@@ -68,8 +68,16 @@ function buildFileContext(filePath: string): string {
 }
 
 /**
+ * Build context lines for a folder mention.
+ * Does not list the folder — just provides the path hint.
+ */
+function buildFolderContext(folderPath: string): string {
+  return `[Context: The user referenced folder ${folderPath}. Use list_files to view its contents if needed.]`
+}
+
+/**
  * Resolve all mentions in a message and return the combined context string.
- * Nodes are resolved via RPC; files get path-only hints.
+ * Nodes are resolved via RPC; files and folders get path-only hints.
  */
 export async function resolveMentionContext(mentions: Mention[]): Promise<string> {
   if (mentions.length === 0) return ''
@@ -80,6 +88,8 @@ export async function resolveMentionContext(mentions: Mention[]): Promise<string
   for (const m of mentions) {
     if (m.kind === 'node') {
       nodePromises.push(resolveNodeContext(m.id))
+    } else if (m.kind === 'folder') {
+      lines.push(buildFolderContext(m.id))
     } else {
       lines.push(buildFileContext(m.id))
     }

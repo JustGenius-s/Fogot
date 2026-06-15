@@ -669,5 +669,9 @@ String AIToolRPC::mention_suggestions(const Dictionary &p_args) {
 	scan_project_files("res://", "gd", scripts);
 	result["scripts"] = scripts;
 
+	Array folders;
+	scan_project_folders("res://", folders);
+	result["folders"] = folders;
+
 	return JSON::stringify(result);
 }
