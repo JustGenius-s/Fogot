@@ -139,6 +139,8 @@ export const searchFiles = tool({
 export const executeCommand = tool({
   description: [
     'Execute a shell command in the Godot project directory. Returns stdout+stderr and exit code.',
+    'Commands run asynchronously — the editor stays responsive during execution.',
+    'Multiple commands can run in parallel.',
     'Rules:',
     '- Only use for operations that genuinely require shell execution (git, build tools, running scripts)',
     '- Do NOT use for: reading files (use read_file), searching (use search_files), listing dirs (use list_files)',
@@ -146,7 +148,6 @@ export const executeCommand = tool({
   ].join('\n'),
   inputSchema: z.object({
     command: z.string().describe('Shell command to execute'),
-    timeout_ms: z.number().optional().describe('Timeout in milliseconds (default: 30000, max: 120000)'),
   }),
   execute: async (args) => bridgeRPC('execute_command', args),
 })

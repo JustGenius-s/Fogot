@@ -30,6 +30,7 @@ import { EditFileToolUI } from '@/components/custom/edit-file-tool-ui'
 import { DelegateTaskToolUI } from '@/components/custom/delegate-task-tool-ui'
 import { ExitPlanModeToolUI } from '@/components/custom/create-plan-tool-ui'
 import { SkillToolUI } from '@/components/custom/skill-tool-ui'
+import { ExecuteCommandToolUI } from '@/components/custom/execute-command-tool-ui'
 import {
   ReadFileToolUI,
   ListFilesToolUI,
@@ -407,6 +408,7 @@ const ChatProvider: FC<{
       <CopyFileToolUI />
       <MoveFileToolUI />
       <SearchFilesToolUI />
+      <ExecuteCommandToolUI />
       <DelegateTaskToolUI />
       <ExitPlanModeToolUI />
       <SkillToolUI />

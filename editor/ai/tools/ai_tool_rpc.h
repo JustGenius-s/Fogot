@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include "core/os/process_id.h"
 #include "core/variant/dictionary.h"
 
 namespace AIToolRPC {
@@ -39,8 +40,20 @@ String move_file(const Dictionary &p_args);
 /// Search for text content within project files (grep-like).
 String search_files(const Dictionary &p_args);
 
-/// Execute a shell command in the project directory. Synchronous with timeout.
-String execute_command(const Dictionary &p_args);
+/// Validate a shell command (safety checks) and produce the full command string.
+/// Returns empty string on success (r_full_command is set), or an error message.
+String validate_command(const Dictionary &p_args, String &r_full_command);
+
+/// Get the temp output file path for a given request ID.
+String get_shell_temp_path(const String &p_request_id);
+
+/// Start a shell process with output redirected to a temp file.
+/// Returns the process PID (0 on failure).
+ProcessID start_shell_process(const String &p_full_command, const String &p_output_path);
+
+/// Read new output from the temp file since the last read offset.
+/// Updates r_offset to the new file position.
+String read_output_delta(const String &p_path, int64_t &r_offset);
 
 /// Query built-in Godot class documentation (ClassDB / EditorHelp).
 /// Supports listing all classes, brief overviews, and full API details.

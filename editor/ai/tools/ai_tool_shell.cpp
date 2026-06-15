@@ -7,14 +7,12 @@
 
 #include "ai_tool_rpc.h"
 
+#include "core/io/file_access.h"
 #include "core/os/os.h"
 #include "core/string/ustring.h"
-#include "core/templates/safe_refcount.h"
 
 namespace {
 
-const int DEFAULT_TIMEOUT_MS = 30000;
-const int MAX_TIMEOUT_MS = 120000;
 const int MAX_OUTPUT_CHARS = 50000;
 
 bool _is_blocked_command(const String &p_command) {
@@ -89,49 +87,17 @@ bool _has_dangerous_path(const String &p_command, const String &p_project_dir) {
 	return false;
 }
 
-struct ExecuteState {
-	String command;
-	String output;
-	int exit_code = -1;
-	SafeFlag done;
-};
-
-void _execute_thread_func(void *p_userdata) {
-	ExecuteState *state = static_cast<ExecuteState *>(p_userdata);
-
-	List<String> args;
-#ifdef WINDOWS_ENABLED
-	String shell = "cmd.exe";
-	args.push_back("/c");
-#else
-	String shell = OS::get_singleton()->get_environment("SHELL");
-	if (shell.is_empty()) {
-		shell = "/bin/sh";
-	}
-	args.push_back("-c");
-#endif
-	args.push_back(state->command);
-
-	OS::get_singleton()->execute(shell, args, &state->output, &state->exit_code, true);
-	state->done.set();
-}
-
 } // namespace
 
-String AIToolRPC::execute_command(const Dictionary &p_args) {
+String AIToolRPC::validate_command(const Dictionary &p_args, String &r_full_command) {
 	String command = p_args.get("command", "");
-	int timeout_ms = p_args.get("timeout_ms", DEFAULT_TIMEOUT_MS);
 
 	if (command.is_empty()) {
 		return "Error: 'command' argument is required.";
 	}
-	if (timeout_ms <= 0 || timeout_ms > MAX_TIMEOUT_MS) {
-		timeout_ms = DEFAULT_TIMEOUT_MS;
-	}
 
 	String project_dir = OS::get_singleton()->get_resource_dir();
 
-	// Safety checks.
 	if (_is_blocked_command(command)) {
 		return "Error: Command blocked for safety reasons. This command could cause system damage.";
 	}
@@ -139,37 +105,68 @@ String AIToolRPC::execute_command(const Dictionary &p_args) {
 		return "Error: Command blocked — destructive operations on paths outside the project directory are not allowed.";
 	}
 
-	ExecuteState state;
 #ifdef WINDOWS_ENABLED
-	state.command = "cd /d \"" + project_dir + "\" && " + command;
+	r_full_command = "cd /d \"" + project_dir + "\" && " + command;
 #else
-	state.command = "cd \"" + project_dir + "\" && " + command;
+	r_full_command = "cd \"" + project_dir + "\" && " + command;
 #endif
 
-	Thread thread;
-	thread.start(_execute_thread_func, &state);
+	return String();
+}
 
-	uint64_t start = OS::get_singleton()->get_ticks_msec();
-	while (!state.done.is_set()) {
-		uint64_t elapsed = OS::get_singleton()->get_ticks_msec() - start;
-		if (elapsed >= (uint64_t)timeout_ms) {
-			return "Error: Command timed out after " + itos(timeout_ms) + "ms. Command: " + command;
-		}
-		OS::get_singleton()->delay_usec(10000);
+String AIToolRPC::get_shell_temp_path(const String &p_request_id) {
+	String cache_dir = OS::get_singleton()->get_cache_path();
+	if (cache_dir.is_empty()) {
+		cache_dir = "/tmp";
+	}
+	return cache_dir.path_join("fogot_cmd_" + p_request_id.md5_text().substr(0, 8) + ".out");
+}
+
+ProcessID AIToolRPC::start_shell_process(const String &p_full_command, const String &p_output_path) {
+	// Wrap command to redirect all output to a temp file.
+#ifdef WINDOWS_ENABLED
+	String wrapped = "(" + p_full_command + ") > \"" + p_output_path + "\" 2>&1";
+	String shell = "cmd.exe";
+	List<String> args;
+	args.push_back("/c");
+#else
+	String wrapped = "(" + p_full_command + ") > \"" + p_output_path + "\" 2>&1";
+	String shell = OS::get_singleton()->get_environment("SHELL");
+	if (shell.is_empty()) {
+		shell = "/bin/sh";
+	}
+	List<String> args;
+	args.push_back("-c");
+#endif
+	args.push_back(wrapped);
+
+	ProcessID pid = 0;
+	Error err = OS::get_singleton()->create_process(shell, args, &pid);
+	if (err != OK) {
+		return 0;
+	}
+	return pid;
+}
+
+String AIToolRPC::read_output_delta(const String &p_path, int64_t &r_offset) {
+	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ);
+	if (!f.is_valid()) {
+		return String();
 	}
 
-	thread.wait_to_finish();
-
-	String output = state.output;
-	if (output.length() > MAX_OUTPUT_CHARS) {
-		output = output.substr(0, MAX_OUTPUT_CHARS) + "\n... [output truncated, " + itos(state.output.length()) + " total chars]";
+	int64_t file_len = f->get_length();
+	if (file_len <= r_offset) {
+		return String();
 	}
 
-	String result;
-	result += "Exit code: " + itos(state.exit_code) + "\n";
-	if (!output.is_empty()) {
-		result += output;
+	f->seek(r_offset);
+	int64_t to_read = file_len - r_offset;
+	if (to_read > MAX_OUTPUT_CHARS) {
+		to_read = MAX_OUTPUT_CHARS;
 	}
 
-	return result;
+	PackedByteArray bytes = f->get_buffer(to_read);
+	r_offset = file_len;
+
+	return String::utf8((const char *)bytes.ptr(), bytes.size());
 }

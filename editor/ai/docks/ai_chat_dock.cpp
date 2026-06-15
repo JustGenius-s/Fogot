@@ -8,11 +8,13 @@
 #include "ai_chat_dock.h"
 
 #include "core/crypto/crypto_core.h"
+#include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/json.h"
 #include "core/io/resource_loader.h"
 #include "core/object/callable_mp.h"
 #include "core/object/script_language.h"
+#include "core/object/worker_thread_pool.h"
 #include "core/os/os.h"
 #include "editor/ai/tools/ai_tool_rpc.h"
 #include "editor/ai/web/editor_web_view.h"
@@ -123,6 +125,12 @@ void AIChatDock::_on_js_message(const String &p_action, const Dictionary &p_para
 			} else {
 				print_line("[AI Chat] " + payload);
 			}
+		}
+
+	} else if (p_action == "cancelCommand") {
+		String request_id = p_params.get("requestId", "");
+		if (!request_id.is_empty()) {
+			_cancel_command(request_id);
 		}
 
 	} else if (p_action == "bridgeReady") {
@@ -249,7 +257,22 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 	} else if (p_tool_name == "search_files") {
 		result = AIToolRPC::search_files(args);
 	} else if (p_tool_name == "execute_command") {
-		result = AIToolRPC::execute_command(args);
+		String full_command;
+		String validation_error = AIToolRPC::validate_command(args, full_command);
+		if (!validation_error.is_empty()) {
+			_js_call("onToolResult", {
+					"'" + _js_escape(p_request_id) + "'",
+					"'" + _js_escape(validation_error) + "'",
+					"true",
+			});
+		} else {
+			// Run asynchronously on WorkerThreadPool; deliver result on main thread.
+			String req_id = p_request_id;
+			WorkerThreadPool::get_singleton()->add_task(
+				callable_mp(this, &AIChatDock::_execute_command_async).bind(full_command, req_id),
+				false, "AI execute_command");
+		}
+		return;
 	} else if (p_tool_name == "get_class_docs") {
 		result = AIToolRPC::get_class_docs(args);
 	} else if (p_tool_name == "get_script_errors") {
@@ -331,6 +354,97 @@ void AIChatDock::_flush_debugger_errors() {
 	pending_debugger_errors.clear();
 
 	_js_call("onDebuggerErrors", { "'" + _js_escape(json_array) + "'" });
+}
+
+// ─── Async command execution (streaming + kill) ──────────────────────
+
+void AIChatDock::_execute_command_async(const String &p_full_command, const String &p_request_id) {
+	// Runs on WorkerThreadPool thread.
+	String output_path = AIToolRPC::get_shell_temp_path(p_request_id);
+
+	ProcessID pid = AIToolRPC::start_shell_process(p_full_command, output_path);
+	if (pid == 0) {
+		String err = "Error: Failed to start shell process.";
+		callable_mp(this, &AIChatDock::_on_command_completed).bind(p_request_id, err).call_deferred();
+		return;
+	}
+
+	// Register the running command for cancellation support.
+	RunningCommand *cmd = new RunningCommand();
+	cmd->pid = pid;
+	cmd->output_path = output_path;
+	{
+		MutexLock lock(_running_commands_mutex);
+		_running_commands[p_request_id] = cmd;
+	}
+
+	// Poll loop: read output incrementally and push to frontend.
+	int64_t read_offset = 0;
+	while (OS::get_singleton()->is_process_running(pid)) {
+		if (cmd->cancelled.is_set()) {
+			OS::get_singleton()->kill(pid);
+			break;
+		}
+		OS::get_singleton()->delay_usec(200'000); // 200ms
+
+		String chunk = AIToolRPC::read_output_delta(output_path, read_offset);
+		if (!chunk.is_empty()) {
+			callable_mp(this, &AIChatDock::_push_command_output).bind(p_request_id, chunk).call_deferred();
+		}
+	}
+
+	// Read any remaining output after process exited.
+	OS::get_singleton()->delay_usec(50'000); // small delay for file flush
+	String final_chunk = AIToolRPC::read_output_delta(output_path, read_offset);
+	if (!final_chunk.is_empty()) {
+		callable_mp(this, &AIChatDock::_push_command_output).bind(p_request_id, final_chunk).call_deferred();
+	}
+
+	// Build final result with exit code.
+	int exit_code = cmd->cancelled.is_set() ? -1 : OS::get_singleton()->get_process_exit_code(pid);
+	String result = "Exit code: " + itos(exit_code);
+	if (cmd->cancelled.is_set()) {
+		result += " (cancelled)";
+	}
+
+	// Cleanup.
+	{
+		MutexLock lock(_running_commands_mutex);
+		_running_commands.erase(p_request_id);
+	}
+	delete cmd;
+
+	// Remove temp file.
+	Ref<DirAccess> da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+	if (da.is_valid()) {
+		da->remove(output_path);
+	}
+
+	callable_mp(this, &AIChatDock::_on_command_completed).bind(p_request_id, result).call_deferred();
+}
+
+void AIChatDock::_push_command_output(const String &p_request_id, const String &p_chunk) {
+	_js_call("onCommandOutput", {
+			"'" + _js_escape(p_request_id) + "'",
+			"'" + _js_escape(p_chunk) + "'",
+	});
+}
+
+void AIChatDock::_on_command_completed(const String &p_request_id, const String &p_result) {
+	bool is_error = p_result.begins_with("Error:");
+	_js_call("onToolResult", {
+			"'" + _js_escape(p_request_id) + "'",
+			"'" + _js_escape(p_result) + "'",
+			is_error ? "true" : "false",
+	});
+}
+
+void AIChatDock::_cancel_command(const String &p_request_id) {
+	MutexLock lock(_running_commands_mutex);
+	RunningCommand **cmd_ptr = _running_commands.getptr(p_request_id);
+	if (cmd_ptr && *cmd_ptr) {
+		(*cmd_ptr)->cancelled.set();
+	}
 }
 
 // ─── Constructor ──────────────────────────────────────────────────

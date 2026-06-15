@@ -7,6 +7,9 @@
 
 #pragma once
 
+#include "core/os/mutex.h"
+#include "core/os/process_id.h"
+#include "core/templates/safe_refcount.h"
 #include "editor/docks/editor_dock.h"
 
 class EditorFileDialog;
@@ -46,6 +49,20 @@ class AIChatDock : public EditorDock {
 
 	// ─── Tool RPC ───────────────────────────────────────────────
 	void _handle_call_tool(const String &p_request_id, const String &p_tool_name, const String &p_args_json);
+
+	// ─── Async command execution (streaming + kill) ─────────────
+	struct RunningCommand {
+		ProcessID pid = 0;
+		String output_path;
+		SafeFlag cancelled;
+	};
+	HashMap<String, RunningCommand *> _running_commands;
+	Mutex _running_commands_mutex;
+
+	void _execute_command_async(const String &p_full_command, const String &p_request_id);
+	void _push_command_output(const String &p_request_id, const String &p_chunk);
+	void _on_command_completed(const String &p_request_id, const String &p_result);
+	void _cancel_command(const String &p_request_id);
 
 	// ─── Debugger error forwarding ──────────────────────────────
 	Vector<String> pending_debugger_errors;

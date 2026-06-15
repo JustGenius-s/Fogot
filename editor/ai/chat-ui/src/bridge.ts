@@ -474,12 +474,46 @@ export function bridgeRPC(
   return new Promise((resolve, reject) => {
     const requestId = `rpc-${++rpcCounter}-${Date.now()}`
     pendingRPC.set(requestId, { resolve, reject })
+
+    if (toolName === 'execute_command') {
+      _activeCommandRequests.set(requestId, true)
+      const cmd = (args as { command?: string }).command
+      if (cmd) {
+        _commandByKey.set(cmd, requestId)
+      }
+    }
+
     sendToNative('callTool', {
       requestId,
       toolName,
       args: JSON.stringify(args),
     })
   })
+}
+
+// ─── Command Streaming Output ─────────────────────────────────────
+
+const _activeCommandRequests = new Map<string, boolean>()
+const _commandOutputBuffers = new Map<string, string>()
+const _commandByKey = new Map<string, string>() // command_text → requestId
+type CommandOutputListener = (requestId: string, fullOutput: string) => void
+const _commandOutputListeners = new Set<CommandOutputListener>()
+
+export function getCommandOutput(requestId: string): string {
+  return _commandOutputBuffers.get(requestId) ?? ''
+}
+
+export function getCommandRequestId(command: string): string | undefined {
+  return _commandByKey.get(command)
+}
+
+export function onCommandOutputChange(listener: CommandOutputListener): () => void {
+  _commandOutputListeners.add(listener)
+  return () => _commandOutputListeners.delete(listener)
+}
+
+export function cancelCommand(requestId: string) {
+  sendToNative('cancelCommand', { requestId })
 }
 
 // ─── Editor Actions ───────────────────────────────────────────────
@@ -534,11 +568,20 @@ export const chatBridge = {
     const pending = pendingRPC.get(requestId)
     if (!pending) return
     pendingRPC.delete(requestId)
+    _activeCommandRequests.delete(requestId)
     if (isError) {
       pending.reject(new Error(resultJson))
     } else {
       pending.resolve(resultJson)
     }
+  },
+
+  /** Streaming output chunk from a running shell command. */
+  onCommandOutput(requestId: string, chunk: string) {
+    const current = _commandOutputBuffers.get(requestId) ?? ''
+    const updated = current + chunk
+    _commandOutputBuffers.set(requestId, updated)
+    _commandOutputListeners.forEach((fn) => fn(requestId, updated))
   },
 
   /** @deprecated C++ no longer pushes model config; models are managed in frontend localStorage. */
