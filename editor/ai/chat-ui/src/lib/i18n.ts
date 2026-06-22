@@ -101,6 +101,17 @@ const messages = {
   'thread.exportMarkdown': { en: 'Export as Markdown', zh: '导出为 Markdown' },
   'thread.planStarted': { en: 'Plan execution started', zh: '计划开始执行' },
 
+  // ── Attachments ──
+  'attachment.add': { en: 'Add Attachment', zh: '添加附件' },
+  'attachment.removeFile': { en: 'Remove file', zh: '移除文件' },
+  'attachment.remove': { en: 'Remove attachment', zh: '移除附件' },
+  'attachment.imagePreview': { en: 'Image Attachment Preview', zh: '图片附件预览' },
+  'attachment.preview': { en: 'Attachment preview', zh: '附件预览' },
+  'attachment.typeImage': { en: 'Image', zh: '图片' },
+  'attachment.typeDocument': { en: 'Document', zh: '文档' },
+  'attachment.typeFile': { en: 'File', zh: '文件' },
+  'attachment.itemLabel': { en: '{type} attachment', zh: '{type}附件' },
+
   // ── Settings ──
   'settings.title': { en: 'Settings', zh: '设置' },
   'settings.description': {
