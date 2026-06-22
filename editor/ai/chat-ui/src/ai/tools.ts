@@ -71,6 +71,12 @@ export {
 } from './tools/skill'
 
 export {
+  writeDesign,
+  designOldContentCache,
+  designPathForSlug,
+} from './tools/design'
+
+export {
   readImage,
 } from './tools/image-read'
 
@@ -132,6 +138,10 @@ import {
 } from './tools/skill'
 
 import {
+  writeDesign,
+} from './tools/design'
+
+import {
   readImage,
 } from './tools/image-read'
 
@@ -181,6 +191,9 @@ export const allTools = {
   // Delegation & skills
   delegate_task: delegateTask,
   use_skill: useSkill,
+
+  // Design mode
+  write_design: writeDesign,
 
   // Image reading (multimodal)
   read_image: readImage,

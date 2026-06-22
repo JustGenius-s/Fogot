@@ -18,7 +18,7 @@ import {
   SelectContent,
   type selectTriggerVariants,
 } from "@/components/assistant-ui/select";
-import { BotIcon, ListTodoIcon, ImagePlusIcon } from "lucide-react";
+import { BotIcon, ListTodoIcon, ImagePlusIcon, PencilRulerIcon } from "lucide-react";
 import { useAgentId, setAgentId } from "@/bridge";
 
 export type ModeOption = {
@@ -140,6 +140,7 @@ const DEFAULT_MODE_ID = "agent";
 const defaultModes: ModeOption[] = [
   { id: "agent", name: "Agent", icon: <BotIcon className="size-3.5" /> },
   { id: "plan", name: "Plan", icon: <ListTodoIcon className="size-3.5" /> },
+  { id: "design", name: "Design", icon: <PencilRulerIcon className="size-3.5" /> },
   { id: "image", name: "Image", icon: <ImagePlusIcon className="size-3.5" /> },
 ];
 

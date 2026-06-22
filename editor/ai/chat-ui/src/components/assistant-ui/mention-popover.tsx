@@ -7,7 +7,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'reac
 import { ComposerPrimitive, unstable_defaultDirectiveFormatter } from '@assistant-ui/react'
 import type { Unstable_TriggerAdapter } from '@assistant-ui/core'
 import { bridgeRPC } from '@/bridge'
-import { GitBranchIcon, BoxIcon, FileCodeIcon, FolderIcon } from 'lucide-react'
+import { listDesigns, designTitle, type DesignEntry } from '@/lib/designs'
+import { GitBranchIcon, BoxIcon, FileCodeIcon, FolderIcon, PencilRulerIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface NodeItem {
@@ -34,6 +35,7 @@ const CATEGORY_ICONS: Record<string, FC<{ className?: string }>> = {
   scenes: BoxIcon,
   scripts: FileCodeIcon,
   folders: FolderIcon,
+  designs: PencilRulerIcon,
 }
 
 const DIRECTIVE_TYPE: Record<string, string> = {
@@ -41,6 +43,7 @@ const DIRECTIVE_TYPE: Record<string, string> = {
   scenes: 'scene',
   scripts: 'script',
   folders: 'folder',
+  designs: 'design',
 }
 
 /** Minimum gap between background refreshes triggered while the popover is open. */
@@ -59,27 +62,38 @@ const stripItem = ({ _category, _haystack, ...rest }: MentionItem) => rest
 
 export const MentionPopover: FC = () => {
   const [data, setData] = useState<MentionData>({ nodes: [], scenes: [], scripts: [], folders: [] })
+  const [designs, setDesigns] = useState<DesignEntry[]>([])
 
   // Dedupe identical payloads so the adapter reference stays stable (avoids a
   // setData -> adapter rebuild -> categories() -> refresh feedback loop).
   const lastJsonRef = useRef<string>('')
+  const lastDesignKeyRef = useRef<string>('')
   const lastFetchRef = useRef<number>(0)
   const inFlightRef = useRef<boolean>(false)
 
   const refresh = useCallback(() => {
     if (inFlightRef.current) return
     inFlightRef.current = true
-    bridgeRPC('mention_suggestions', {})
-      .then((json) => {
-        if (json === lastJsonRef.current) return // unchanged — keep adapter stable
-        lastJsonRef.current = json
-        try {
-          const parsed = JSON.parse(json) as MentionData
-          setData(parsed)
-        } catch { /* malformed JSON */ }
-      })
-      .catch(() => { /* RPC failure — keep stale data */ })
-      .finally(() => { inFlightRef.current = false })
+    Promise.all([
+      bridgeRPC('mention_suggestions', {})
+        .then((json) => {
+          if (json === lastJsonRef.current) return // unchanged — keep adapter stable
+          lastJsonRef.current = json
+          try {
+            const parsed = JSON.parse(json) as MentionData
+            setData(parsed)
+          } catch { /* malformed JSON */ }
+        })
+        .catch(() => { /* RPC failure — keep stale data */ }),
+      listDesigns()
+        .then((res) => {
+          const key = res.designs.map((d) => d.path).join('|')
+          if (key === lastDesignKeyRef.current) return // unchanged
+          lastDesignKeyRef.current = key
+          setDesigns(res.designs)
+        })
+        .catch(() => { /* listing failure — keep stale data */ }),
+    ]).finally(() => { inFlightRef.current = false })
   }, [])
 
   // Throttled variant used from the hot path (categories getter, called
@@ -134,6 +148,17 @@ export const MentionPopover: FC = () => {
         _category: 'folders',
         _haystack: (f.path + '\n' + f.name).toLowerCase(),
       })),
+      ...designs.map((d) => {
+        const label = designTitle(d)
+        return {
+          id: d.path,
+          type: DIRECTIVE_TYPE.designs,
+          label,
+          description: d.path,
+          _category: 'designs',
+          _haystack: (d.path + '\n' + label + '\n' + d.slug).toLowerCase(),
+        }
+      }),
     ]
 
     return {
@@ -144,6 +169,7 @@ export const MentionPopover: FC = () => {
         if (data.scenes.length > 0) cats.push({ id: 'scenes', label: 'Scenes' })
         if (data.scripts.length > 0) cats.push({ id: 'scripts', label: 'Scripts' })
         if (data.folders.length > 0) cats.push({ id: 'folders', label: 'Folders' })
+        if (designs.length > 0) cats.push({ id: 'designs', label: 'Designs' })
         return cats
       },
       categoryItems: (categoryId: string) =>
@@ -153,13 +179,14 @@ export const MentionPopover: FC = () => {
         return allItems.filter((i) => i._haystack.includes(q)).map(stripItem)
       },
     }
-  }, [data])
+  }, [data, designs])
 
   const isEmpty =
     data.nodes.length === 0 &&
     data.scenes.length === 0 &&
     data.scripts.length === 0 &&
-    data.folders.length === 0
+    data.folders.length === 0 &&
+    designs.length === 0
 
   return (
     <ComposerPrimitive.Unstable_TriggerPopover
@@ -209,7 +236,9 @@ export const MentionPopover: FC = () => {
                   ? BoxIcon
                   : item.type === 'folder'
                     ? FolderIcon
-                    : FileCodeIcon
+                    : item.type === 'design'
+                      ? PencilRulerIcon
+                      : FileCodeIcon
             return (
               <ComposerPrimitive.Unstable_TriggerPopoverItem
                 key={item.id}

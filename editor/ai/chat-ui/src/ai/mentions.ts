@@ -9,7 +9,7 @@
 import { unstable_defaultDirectiveFormatter } from '@assistant-ui/react'
 import { bridgeRPC } from '@/bridge'
 
-export type MentionKind = 'node' | 'scene' | 'script' | 'folder'
+export type MentionKind = 'node' | 'scene' | 'script' | 'folder' | 'design'
 
 export interface Mention {
   kind: MentionKind
@@ -17,7 +17,7 @@ export interface Mention {
   id: string
 }
 
-const MENTION_TYPES = new Set<string>(['node', 'scene', 'script', 'folder'])
+const MENTION_TYPES = new Set<string>(['node', 'scene', 'script', 'folder', 'design'])
 
 /**
  * Extract all @ mention directives from a message text string.
@@ -68,6 +68,19 @@ function buildFileContext(filePath: string): string {
 }
 
 /**
+ * Resolve a design mention into its full document content so the model has the
+ * referenced design at hand without an extra tool round-trip.
+ */
+async function resolveDesignContext(path: string): Promise<string> {
+  try {
+    const content = await bridgeRPC('read_file', { path })
+    return `[Referenced design ${path}]\n${content}`
+  } catch {
+    return `[Context: The user referenced design ${path}. Use read_file to view its contents if needed.]`
+  }
+}
+
+/**
  * Build context lines for a folder mention.
  * Does not list the folder — just provides the path hint.
  */
@@ -83,11 +96,13 @@ export async function resolveMentionContext(mentions: Mention[]): Promise<string
   if (mentions.length === 0) return ''
 
   const lines: string[] = []
-  const nodePromises: Promise<string>[] = []
+  const asyncContexts: Promise<string>[] = []
 
   for (const m of mentions) {
     if (m.kind === 'node') {
-      nodePromises.push(resolveNodeContext(m.id))
+      asyncContexts.push(resolveNodeContext(m.id))
+    } else if (m.kind === 'design') {
+      asyncContexts.push(resolveDesignContext(m.id))
     } else if (m.kind === 'folder') {
       lines.push(buildFolderContext(m.id))
     } else {
@@ -95,6 +110,6 @@ export async function resolveMentionContext(mentions: Mention[]): Promise<string
     }
   }
 
-  const nodeContexts = await Promise.all(nodePromises)
-  return [...nodeContexts, ...lines].join('\n')
+  const resolved = await Promise.all(asyncContexts)
+  return [...resolved, ...lines].join('\n')
 }

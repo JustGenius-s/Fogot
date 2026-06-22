@@ -58,6 +58,7 @@ import {
   ChevronRightIcon,
   CopyIcon,
   DownloadIcon,
+  LayoutGridIcon,
   Loader2Icon,
   MoreHorizontalIcon,
   PencilIcon,
@@ -67,7 +68,7 @@ import {
   SquareIcon,
 } from "lucide-react";
 import { useState, type FC } from "react";
-import { useAgentId } from "@/bridge";
+import { useAgentId, setAppView } from "@/bridge";
 
 const ThreadHeader: FC = () => {
   const [open, setOpen] = useState(false);
@@ -97,6 +98,14 @@ const ThreadHeader: FC = () => {
       </Popover.Root>
 
       <div className="flex items-center gap-0.5">
+        <TooltipIconButton
+          tooltip="Designs"
+          side="bottom"
+          className="size-7"
+          onClick={() => setAppView('design')}
+        >
+          <LayoutGridIcon className="size-4" />
+        </TooltipIconButton>
         <ViewToggle />
         <ModelSettings />
         <ThreadListPrimitive.New asChild>

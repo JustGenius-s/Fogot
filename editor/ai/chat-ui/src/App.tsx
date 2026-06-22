@@ -13,8 +13,9 @@ import { Thread } from '@/components/assistant-ui/thread'
 import { ModelSettings } from '@/components/assistant-ui/model-settings'
 import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getImageModels, getAttachments, clearAttachments, setActivePlan, useAppView, getAvailableSkills } from '@/bridge'
 import { AssetMode } from '@/components/assets/asset-mode'
+import { DesignMode } from '@/components/assets/design-mode'
 import { allTools, getToolsForAgent } from '@/ai/tools'
-import { getDefaultSystemPrompt, getPlanSystemPrompt, getAgent } from '@/ai/agents'
+import { getDefaultSystemPrompt, getPlanSystemPrompt, getDesignSystemPrompt, getAgent } from '@/ai/agents'
 import { createImageChatTransport } from '@/ai/image-transport'
 import { configureDelegateTool } from '@/ai/tools'
 import {
@@ -29,6 +30,7 @@ import { WriteFileToolUI } from '@/components/custom/write-file-tool-ui'
 import { EditFileToolUI } from '@/components/custom/edit-file-tool-ui'
 import { DelegateTaskToolUI } from '@/components/custom/delegate-task-tool-ui'
 import { ExitPlanModeToolUI } from '@/components/custom/create-plan-tool-ui'
+import { DesignToolUI } from '@/components/custom/design-tool-ui'
 import { SkillToolUI } from '@/components/custom/skill-tool-ui'
 import { ExecuteCommandToolUI } from '@/components/custom/execute-command-tool-ui'
 import {
@@ -411,6 +413,7 @@ const ChatProvider: FC<{
       <ExecuteCommandToolUI />
       <DelegateTaskToolUI />
       <ExitPlanModeToolUI />
+      <DesignToolUI />
       <SkillToolUI />
       <TooltipProvider>
         <MainView status={status} />
@@ -424,6 +427,10 @@ const MainView: FC<{ status: string }> = ({ status }) => {
 
   if (view === 'assets') {
     return <AssetMode />
+  }
+
+  if (view === 'design') {
+    return <DesignMode />
   }
 
   return (
@@ -490,6 +497,12 @@ export default function App() {
       tools = getToolsForAgent(['read_file', 'list_files', 'search_files', 'exit_plan_mode'])
       instructions = getPlanSystemPrompt()
       maxSteps = 15
+    } else if (agentId === 'design') {
+      tools = getToolsForAgent([
+        'read_file', 'write_design', 'list_files', 'search_files', 'generate_image',
+      ])
+      instructions = getDesignSystemPrompt()
+      maxSteps = 25
     } else if (agentConfig?.allowedTools) {
       tools = getToolsForAgent(agentConfig.allowedTools)
       instructions = agentConfig.systemPrompt ?? getDefaultSystemPrompt(getAvailableSkills())
