@@ -5,6 +5,17 @@ import os
 
 Import("env")
 
+import ai_builders
+
+# Embed the prebuilt chat UI (dist/index.html) into the binary as a byte array.
+# Build it first with: cd editor/ai/chat-ui && npm run build:fast
+_chat_html = File("#editor/ai/chat-ui/dist/index.html")
+env.CommandNoCache(
+    "#editor/ai/docks/ai_chat_html.gen.h",
+    _chat_html if os.path.exists(_chat_html.abspath) else [],
+    env.Run(ai_builders.make_chat_html_header),
+)
+
 env.add_source_files(env.editor_sources, "docks/*.cpp")
 env.add_source_files(env.editor_sources, "tools/*.cpp")
 env.add_source_files(env.editor_sources, "shared/*.cpp")

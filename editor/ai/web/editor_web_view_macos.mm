@@ -83,6 +83,10 @@ class EditorWebViewMacOS : public EditorWebView {
 	FogotWebViewDelegate *delegate = nil;
 	bool ready = false;
 
+	// Queued load requests issued before the WKWebView exists.
+	String pending_html;
+	String pending_url;
+
 	void _update_frame();
 	void _create_web_view();
 	void _destroy_web_view();
@@ -211,8 +215,10 @@ public:
 		return;
 	}
 
-	// Allow about:blank and data: URIs (normal mode).
-	if ([scheme isEqualToString:@"about"] || [scheme isEqualToString:@"data"]) {
+	// Allow about:blank, data: URIs, and local file:// (the bundled chat UI is
+	// loaded from a file in Application Support in normal mode).
+	if ([scheme isEqualToString:@"about"] || [scheme isEqualToString:@"data"] ||
+		[scheme isEqualToString:@"file"]) {
 		decisionHandler(WKNavigationActionPolicyAllow);
 	} else {
 		decisionHandler(WKNavigationActionPolicyCancel);
@@ -273,6 +279,19 @@ void EditorWebViewMacOS::_create_web_view() {
 
 	[parent_view addSubview:wk_view];
 	_update_frame();
+
+	print_line("EditorWebViewMacOS: WKWebView created.");
+
+	// Flush any load request that arrived before the view existed.
+	if (!pending_url.is_empty()) {
+		String url = pending_url;
+		pending_url = "";
+		load_url(url);
+	} else if (!pending_html.is_empty()) {
+		String html = pending_html;
+		pending_html = "";
+		load_html(html);
+	}
 }
 
 void EditorWebViewMacOS::_destroy_web_view() {
@@ -312,18 +331,45 @@ void EditorWebViewMacOS::_update_frame() {
 }
 
 void EditorWebViewMacOS::load_html(const String &p_html) {
-	if (!wk_view) return;
+	if (!wk_view) {
+		// Queue until the view exists; flushed from _create_web_view().
+		pending_html = p_html;
+		pending_url = "";
+		print_line("EditorWebViewMacOS: load_html queued (view not ready).");
+		return;
+	}
 
-	NSString *html_str = [NSString stringWithUTF8String:p_html.utf8().get_data()];
 	NSString *appSupport = [NSSearchPathForDirectoriesInDomains(NSApplicationSupportDirectory, NSUserDomainMask, YES) firstObject];
 	NSString *fogotDir = [appSupport stringByAppendingPathComponent:@"Fogot"];
 	[[NSFileManager defaultManager] createDirectoryAtPath:fogotDir withIntermediateDirectories:YES attributes:nil error:nil];
-	NSURL *baseURL = [NSURL fileURLWithPath:fogotDir isDirectory:YES];
-	[wk_view loadHTMLString:html_str baseURL:baseURL];
+
+	// WKWebView's loadHTMLString passes the markup over IPC and fails silently
+	// for large documents (our bundled UI is several MB). Write it to a file and
+	// load via a file URL, which has no such size limit.
+	NSString *htmlPath = [fogotDir stringByAppendingPathComponent:@"ai_chat.html"];
+	NSString *html_str = [NSString stringWithUTF8String:p_html.utf8().get_data()];
+	NSError *write_err = nil;
+	[html_str writeToFile:htmlPath atomically:YES encoding:NSUTF8StringEncoding error:&write_err];
+	if (write_err != nil) {
+		// Fall back to the in-memory path if the file could not be written.
+		ERR_PRINT("EditorWebViewMacOS: failed to write chat HTML, falling back to loadHTMLString.");
+		NSURL *baseURL = [NSURL fileURLWithPath:fogotDir isDirectory:YES];
+		[wk_view loadHTMLString:html_str baseURL:baseURL];
+		return;
+	}
+
+	print_line(vformat("EditorWebViewMacOS: loading chat HTML from file (%d bytes).", p_html.length()));
+	NSURL *fileURL = [NSURL fileURLWithPath:htmlPath];
+	NSURL *dirURL = [NSURL fileURLWithPath:fogotDir isDirectory:YES];
+	[wk_view loadFileURL:fileURL allowingReadAccessToURL:dirURL];
 }
 
 void EditorWebViewMacOS::load_url(const String &p_url) {
-	if (!wk_view) return;
+	if (!wk_view) {
+		pending_url = p_url;
+		pending_html = "";
+		return;
+	}
 
 	NSString *url_str = [NSString stringWithUTF8String:p_url.utf8().get_data()];
 	NSURL *url = [NSURL URLWithString:url_str];
@@ -346,6 +392,7 @@ void EditorWebViewMacOS::set_web_view_visible(bool p_visible) {
 
 void EditorWebViewMacOS::_on_page_loaded() {
 	ready = true;
+	print_line("EditorWebViewMacOS: page loaded.");
 	emit_signal("web_view_ready");
 }
 

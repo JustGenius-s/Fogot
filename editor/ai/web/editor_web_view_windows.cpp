@@ -9,6 +9,8 @@
 
 #include "editor_web_view.h"
 
+#include "core/io/dir_access.h"
+#include "core/io/file_access.h"
 #include "core/io/json.h"
 #include "core/object/callable_mp.h"
 #include "core/os/os.h"
@@ -332,7 +334,24 @@ void EditorWebViewWindows::load_html(const String &p_html) {
 		pending_url = "";
 		return;
 	}
-	webview->NavigateToString((LPCWSTR)p_html.utf16().get_data());
+
+	// NavigateToString is limited to ~2 MB. Our bundled UI is several MB, so
+	// write it to a file and navigate to a file:// URL instead.
+	String dir = OS::get_singleton()->get_cache_path().path_join("Fogot");
+	Ref<DirAccess> da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
+	if (da.is_valid()) {
+		da->make_dir_recursive(dir);
+	}
+	String html_file = dir.path_join("ai_chat.html");
+	Ref<FileAccess> f = FileAccess::open(html_file, FileAccess::WRITE);
+	if (f.is_valid()) {
+		f->store_string(p_html);
+		f.unref();
+		String url = "file:///" + html_file.replace("\\", "/");
+		webview->Navigate((LPCWSTR)url.utf16().get_data());
+	} else {
+		webview->NavigateToString((LPCWSTR)p_html.utf16().get_data());
+	}
 }
 
 void EditorWebViewWindows::load_url(const String &p_url) {

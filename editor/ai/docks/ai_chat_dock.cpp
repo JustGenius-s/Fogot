@@ -16,12 +16,16 @@
 #include "core/object/script_language.h"
 #include "core/object/worker_thread_pool.h"
 #include "core/os/os.h"
+#include "core/string/translation_server.h"
 #include "editor/ai/tools/ai_tool_rpc.h"
 #include "editor/ai/web/editor_web_view.h"
 #include "editor/debugger/editor_debugger_node.h"
 #include "editor/debugger/script_editor_debugger.h"
 #include "editor/editor_interface.h"
 #include "editor/gui/editor_file_dialog.h"
+
+#include "ai_chat_html.gen.h"
+
 void AIChatDock::_bind_methods() {
 }
 
@@ -137,6 +141,12 @@ void AIChatDock::_on_js_message(const String &p_action, const Dictionary &p_para
 		// #region agent log
 		print_line("[DBG-fb625c] bridgeReady received");
 		// #endregion
+		// Push the editor UI locale so the chat UI can match it (default en).
+		String locale;
+		if (TranslationServer::get_singleton()) {
+			locale = TranslationServer::get_singleton()->get_tool_locale();
+		}
+		_js_call("setLocale", { "'" + _js_escape(locale) + "'" });
 	}
 }
 
@@ -148,6 +158,11 @@ void AIChatDock::_on_web_view_ready() {
 }
 
 void AIChatDock::_load_chat_html() {
+	if (!web_view) {
+		ERR_PRINT("AIChatDock: web_view is null (platform WebView unavailable).");
+		return;
+	}
+
 	// Dev mode: load from Vite dev server for hot-reload.
 	// Set env FOGOT_AI_DEV=1 and run `npm run dev` in editor/ai/chat-ui.
 	if (OS::get_singleton()->has_environment("FOGOT_AI_DEV")) {
@@ -181,7 +196,14 @@ void AIChatDock::_load_chat_html() {
 	}
 
 	if (f.is_valid()) {
+		// Disk override (dev / power users): load the on-disk build if present.
 		String html = f->get_as_utf8_string();
+		print_line(vformat("AIChatDock: loading chat UI from disk (%d bytes).", html.length()));
+		web_view->load_html(html);
+	} else if (_chat_ui_html_size > 0) {
+		// Production: use the copy embedded into the binary at compile time.
+		String html = String::utf8((const char *)_chat_ui_html, _chat_ui_html_size);
+		print_line(vformat("AIChatDock: loading embedded chat UI (%d bytes).", html.length()));
 		web_view->load_html(html);
 	} else {
 		ERR_PRINT("AIChatDock: Could not find chat UI HTML. Build it with: cd editor/ai/chat-ui && npm run build:fast");
