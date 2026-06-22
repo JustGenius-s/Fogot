@@ -16,40 +16,13 @@ import {
   useImageQuality,
   setImageQuality,
 } from '@/bridge'
+import { useTranslation } from '@/lib/i18n'
 
 const AUTO = '__auto__'
 
-const SIZE_OPTIONS: { value: string; label: string }[] = [
-  { value: AUTO, label: 'Auto' },
-  { value: '1:1', label: '1:1' },
-  { value: '3:2', label: '3:2' },
-  { value: '2:3', label: '2:3' },
-  { value: '4:3', label: '4:3' },
-  { value: '3:4', label: '3:4' },
-  { value: '16:9', label: '16:9' },
-  { value: '9:16', label: '9:16' },
-  { value: '2:1', label: '2:1' },
-  { value: '1:2', label: '1:2' },
-  { value: '5:4', label: '5:4' },
-  { value: '4:5', label: '4:5' },
-  { value: '3:1', label: '3:1' },
-  { value: '1:3', label: '1:3' },
-  { value: '21:9', label: '21:9' },
-  { value: '9:21', label: '9:21' },
-]
-
-const RESOLUTION_OPTIONS: { value: string; label: string }[] = [
-  { value: AUTO, label: 'Auto' },
-  { value: '1k', label: '1K' },
-  { value: '2k', label: '2K' },
-  { value: '4k', label: '4K' },
-]
-
-const QUALITY_OPTIONS: { value: string; label: string }[] = [
-  { value: AUTO, label: 'Auto' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
+const RATIO_VALUES = [
+  '1:1', '3:2', '2:3', '4:3', '3:4', '16:9', '9:16', '2:1',
+  '1:2', '5:4', '4:5', '3:1', '1:3', '21:9', '9:21',
 ]
 
 /**
@@ -57,10 +30,28 @@ const QUALITY_OPTIONS: { value: string; label: string }[] = [
  * when in image mode.  Covers size (ratio), resolution, and quality.
  */
 export const ImageGenSettings: FC = () => {
+  const { t } = useTranslation()
   const agentId = useAgentId()
   const size = useImageSize()
   const resolution = useImageResolution()
   const quality = useImageQuality()
+
+  const SIZE_OPTIONS = [
+    { value: AUTO, label: t('img.auto') },
+    ...RATIO_VALUES.map((v) => ({ value: v, label: v })),
+  ]
+  const RESOLUTION_OPTIONS = [
+    { value: AUTO, label: t('img.auto') },
+    { value: '1k', label: '1K' },
+    { value: '2k', label: '2K' },
+    { value: '4k', label: '4K' },
+  ]
+  const QUALITY_OPTIONS = [
+    { value: AUTO, label: t('img.auto') },
+    { value: 'low', label: t('img.low') },
+    { value: 'medium', label: t('img.medium') },
+    { value: 'high', label: t('img.high') },
+  ]
 
   if (agentId !== 'image') return null
 

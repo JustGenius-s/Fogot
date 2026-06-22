@@ -21,6 +21,7 @@ import { AssetThumb } from '@/components/assets/asset-thumb'
 import { useAssets } from '@/components/assets/use-assets'
 import { type AssetEntry, formatBytes, invalidateAsset, readAssetDataUrl, ASSETS_DIR } from '@/lib/assets'
 import { bridgeRPC, openFile, addAttachment, setAppView } from '@/bridge'
+import { useTranslation } from '@/lib/i18n'
 
 interface AssetGalleryProps {
   dir?: string
@@ -31,6 +32,7 @@ interface AssetGalleryProps {
 }
 
 export const AssetGallery: FC<AssetGalleryProps> = ({ dir = ASSETS_DIR, onSelect, reloadToken }) => {
+  const { t } = useTranslation()
   const { assets, exists, loading, error, reload } = useAssets(dir)
   const [preview, setPreview] = useState<AssetEntry | null>(null)
 
@@ -63,10 +65,10 @@ export const AssetGallery: FC<AssetGalleryProps> = ({ dir = ASSETS_DIR, onSelect
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
-          {loading ? 'Loading…' : `${assets.length} assets`}
+          {loading ? t('common.loading') : t('assets.assetsCount', { count: assets.length })}
           <span className="ml-1 opacity-60">{dir}</span>
         </span>
-        <TooltipIconButton tooltip="Refresh" side="bottom" onClick={reload}>
+        <TooltipIconButton tooltip={t('common.refresh')} side="bottom" onClick={reload}>
           <RefreshCwIcon className="size-3.5" />
         </TooltipIconButton>
       </div>
@@ -88,8 +90,8 @@ export const AssetGallery: FC<AssetGalleryProps> = ({ dir = ASSETS_DIR, onSelect
       ) : !loading && assets.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border/60 px-4 py-10 text-center text-xs text-muted-foreground/70">
           <ImageOffIcon className="size-6 opacity-50" />
-          {exists ? 'No image assets in this folder' : `Folder not found: ${dir}`}
-          <span className="opacity-60">Generate in Image mode, or add images to this folder</span>
+          {exists ? t('assets.noAssets') : t('assets.folderNotFound', { dir })}
+          <span className="opacity-60">{t('assets.noAssetsHint')}</span>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-2 @[18rem]:grid-cols-3 @[26rem]:grid-cols-4">
@@ -128,6 +130,7 @@ const AssetPreviewDialog: FC<{
   onClose: () => void
   onChanged: () => void
 }> = ({ asset, onClose, onChanged }) => {
+  const { t } = useTranslation()
   const [busy, setBusy] = useState(false)
   const [imgSrc, setImgSrc] = useState<string | null>(null)
   const [imgDims, setImgDims] = useState<{ w: number; h: number } | null>(null)
@@ -227,24 +230,24 @@ const AssetPreviewDialog: FC<{
         {/* ── Primary CTA ── */}
         <Button onClick={handleUseInChat} className="w-full">
           <MessageSquarePlusIcon className="size-4" />
-          Use in Chat
+          {t('assets.useInChat')}
         </Button>
 
         {/* ── Secondary actions ── */}
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => openFile(asset.path)} className="flex-1">
             <ExternalLinkIcon className="size-3.5" />
-            Open in Editor
+            {t('assets.openInEditor')}
           </Button>
           <Button variant="outline" size="sm" onClick={handleCopyPath} className="flex-1">
             <CopyIcon className="size-3.5" />
-            Copy Path
+            {t('common.copyPath')}
           </Button>
         </div>
 
         {/* ── Danger zone — visually separated from main actions ── */}
         <div className="-mx-4 -mb-4 mt-1 flex items-center justify-between rounded-b-xl border-t border-border/40 bg-muted/20 px-4 py-3">
-          <span className="text-[11px] text-muted-foreground/50">Danger zone</span>
+          <span className="text-[11px] text-muted-foreground/50">{t('common.dangerZone')}</span>
           <Button
             variant="destructive"
             size="sm"
@@ -252,7 +255,7 @@ const AssetPreviewDialog: FC<{
             onClick={handleDelete}
           >
             <Trash2Icon className="size-3.5" />
-            Delete
+            {t('common.delete')}
           </Button>
         </div>
       </DialogContent>

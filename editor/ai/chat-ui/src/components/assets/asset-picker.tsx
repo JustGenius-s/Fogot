@@ -10,9 +10,11 @@ import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button
 import { AssetGallery } from '@/components/assets/asset-gallery'
 import { readAssetDataUrl, type AssetEntry } from '@/lib/assets'
 import { addAttachment } from '@/bridge'
+import { useTranslation } from '@/lib/i18n'
 
 /** Composer button that opens the asset library to attach an image to chat. */
 export const AssetPicker: FC = () => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   const handleSelect = async (asset: AssetEntry) => {
@@ -26,7 +28,7 @@ export const AssetPicker: FC = () => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <TooltipIconButton
-        tooltip="Choose from assets"
+        tooltip={t('assets.chooseFromAssets')}
         side="top"
         variant="ghost"
         size="icon"
@@ -37,7 +39,7 @@ export const AssetPicker: FC = () => {
       </TooltipIconButton>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Select asset</DialogTitle>
+          <DialogTitle>{t('assets.selectAsset')}</DialogTitle>
         </DialogHeader>
         <div className="@container max-h-[60vh] overflow-y-auto">
           <AssetGallery onSelect={handleSelect} />

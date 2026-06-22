@@ -10,6 +10,7 @@ import { AssetThumb } from '@/components/assets/asset-thumb'
 import { parseDesign, designImagePath } from '@/lib/designs'
 import { designPathForSlug } from '@/ai/tools'
 import { setAppView } from '@/bridge'
+import { useTranslation } from '@/lib/i18n'
 
 interface WriteDesignArgs {
   slug: string
@@ -19,6 +20,7 @@ interface WriteDesignArgs {
 export const DesignToolUI = makeAssistantToolUI<WriteDesignArgs, string>({
   toolName: 'write_design',
   render: ({ args, status }) => {
+    const { t } = useTranslation()
     if (!args?.slug) return null
 
     const isRunning = status?.type === 'running'
@@ -36,7 +38,7 @@ export const DesignToolUI = makeAssistantToolUI<WriteDesignArgs, string>({
           ) : (
             <PencilRulerIcon className="size-3.5 shrink-0 text-muted-foreground" />
           )}
-          <span className="font-medium text-muted-foreground">Design</span>
+          <span className="font-medium text-muted-foreground">{t('design.label')}</span>
           <span className="truncate text-muted-foreground/60">{path}</span>
         </div>
 
@@ -88,7 +90,7 @@ export const DesignToolUI = makeAssistantToolUI<WriteDesignArgs, string>({
               className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
             >
               <LayoutGridIcon className="size-3.5" />
-              设计视图
+              {t('design.openView')}
             </button>
           </div>
         )}

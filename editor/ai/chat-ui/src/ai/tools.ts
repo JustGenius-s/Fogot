@@ -77,6 +77,14 @@ export {
 } from './tools/design'
 
 export {
+  designVoiceTool,
+  cloneVoiceTool,
+  generateSpeechTool,
+  generateMusicTool,
+  listVoicesTool,
+} from './tools/audio'
+
+export {
   readImage,
 } from './tools/image-read'
 
@@ -142,6 +150,14 @@ import {
 } from './tools/design'
 
 import {
+  designVoiceTool,
+  cloneVoiceTool,
+  generateSpeechTool,
+  generateMusicTool,
+  listVoicesTool,
+} from './tools/audio'
+
+import {
   readImage,
 } from './tools/image-read'
 
@@ -194,6 +210,13 @@ export const allTools = {
 
   // Design mode
   write_design: writeDesign,
+
+  // Audio mode
+  design_voice: designVoiceTool,
+  clone_voice: cloneVoiceTool,
+  generate_speech: generateSpeechTool,
+  generate_music: generateMusicTool,
+  list_voices: listVoicesTool,
 
   // Image reading (multimodal)
   read_image: readImage,

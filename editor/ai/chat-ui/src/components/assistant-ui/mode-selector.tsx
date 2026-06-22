@@ -18,8 +18,9 @@ import {
   SelectContent,
   type selectTriggerVariants,
 } from "@/components/assistant-ui/select";
-import { BotIcon, ListTodoIcon, ImagePlusIcon, PencilRulerIcon } from "lucide-react";
+import { BotIcon, ListTodoIcon, ImagePlusIcon, PencilRulerIcon, AudioLinesIcon } from "lucide-react";
 import { useAgentId, setAgentId } from "@/bridge";
+import { useTranslation } from "@/lib/i18n";
 
 export type ModeOption = {
   id: string;
@@ -137,13 +138,6 @@ function ModeSelectorItem({ mode, className, ...props }: ModeSelectorItemProps) 
 
 const DEFAULT_MODE_ID = "agent";
 
-const defaultModes: ModeOption[] = [
-  { id: "agent", name: "Agent", icon: <BotIcon className="size-3.5" /> },
-  { id: "plan", name: "Plan", icon: <ListTodoIcon className="size-3.5" /> },
-  { id: "design", name: "Design", icon: <PencilRulerIcon className="size-3.5" /> },
-  { id: "image", name: "Image", icon: <ImagePlusIcon className="size-3.5" /> },
-];
-
 type ModeSelectorProps = VariantProps<typeof selectTriggerVariants> & {
   contentClassName?: string;
 };
@@ -154,6 +148,15 @@ const ModeSelectorImpl: FC<ModeSelectorProps> = ({
   contentClassName,
 }) => {
   const value = useAgentId();
+  const { t } = useTranslation();
+
+  const defaultModes: ModeOption[] = [
+    { id: "agent", name: t("mode.agent"), icon: <BotIcon className="size-3.5" /> },
+    { id: "plan", name: t("mode.plan"), icon: <ListTodoIcon className="size-3.5" /> },
+    { id: "design", name: t("mode.design"), icon: <PencilRulerIcon className="size-3.5" /> },
+    { id: "audio", name: t("mode.audio"), icon: <AudioLinesIcon className="size-3.5" /> },
+    { id: "image", name: t("mode.image"), icon: <ImagePlusIcon className="size-3.5" /> },
+  ];
 
   return (
     <ModeSelectorRoot modes={defaultModes} value={value} onValueChange={setAgentId}>

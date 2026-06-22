@@ -10,7 +10,7 @@ import {
 } from "react";
 import { Select as SelectPrimitive } from "radix-ui";
 import type { VariantProps } from "class-variance-authority";
-import { CheckIcon, BotIcon, ImageIcon } from "lucide-react";
+import { CheckIcon, BotIcon, ImageIcon, AudioLinesIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   SelectRoot,
@@ -25,8 +25,18 @@ import {
   setSelectedChatModelId,
   useSelectedImageModelId,
   setSelectedImageModelId,
+  useSelectedAudioModelId,
+  setSelectedAudioModelId,
   type ModelConfig,
+  type ModelType,
 } from "@/bridge";
+
+/** Icon for a model based on its type. */
+function modelTypeIcon(type: ModelType) {
+  if (type === "image") return <ImageIcon className="size-3.5" />;
+  if (type === "audio") return <AudioLinesIcon className="size-3.5" />;
+  return <BotIcon className="size-3.5" />;
+}
 
 // ─── Context ──────────────────────────────────────────────────────
 
@@ -81,13 +91,7 @@ function ModelSelectorValue() {
 
   return (
     <span className="inline-flex! items-center gap-1.5">
-      <span className="flex shrink-0">
-        {selected.type === "image" ? (
-          <ImageIcon className="size-3.5" />
-        ) : (
-          <BotIcon className="size-3.5" />
-        )}
-      </span>
+      <span className="flex shrink-0">{modelTypeIcon(selected.type)}</span>
       <span className="truncate">{selected.name}</span>
     </span>
   );
@@ -129,13 +133,7 @@ function ModelSelectorItem({ model, className, ...props }: ModelSelectorItemProp
       </span>
       <SelectPrimitive.ItemText>
         <span className="flex items-center gap-1.5">
-          <span className="flex shrink-0">
-            {model.type === "image" ? (
-              <ImageIcon className="size-3.5" />
-            ) : (
-              <BotIcon className="size-3.5" />
-            )}
-          </span>
+          <span className="flex shrink-0">{modelTypeIcon(model.type)}</span>
           <span>{model.name}</span>
         </span>
       </SelectPrimitive.ItemText>
@@ -150,30 +148,26 @@ type ModelSelectorProps = VariantProps<typeof selectTriggerVariants> & {
   contentClassName?: string;
 };
 
-const ModelSelectorImpl: FC<ModelSelectorProps> = ({
+type ModelSelectorViewProps = ModelSelectorProps & {
+  models: ModelConfig[];
+  value: string;
+  onValueChange: (value: string) => void;
+  emptyLabel: string;
+};
+
+/** Shared rendering for a single-type model selector (empty/single/multi). */
+const ModelSelectorView: FC<ModelSelectorViewProps> = ({
   variant = "ghost",
   size = "sm",
   contentClassName,
+  models,
+  value,
+  onValueChange,
+  emptyLabel,
 }) => {
-  const config = useConfig();
-  const agentId = useAgentId();
-  const chatModelId = useSelectedChatModelId();
-  const imageModelId = useSelectedImageModelId();
-
-  const isImageMode = agentId === "image";
-  const models = config.models.filter((m) =>
-    m.type === (isImageMode ? "image" : "chat"),
-  );
-  const value = isImageMode ? imageModelId : chatModelId;
-  const onValueChange = isImageMode
-    ? (v: string) => { if (v) setSelectedImageModelId(v); }
-    : (v: string) => { if (v) setSelectedChatModelId(v); };
-
   if (models.length === 0) {
     return (
-      <span className="px-2 py-1 text-xs text-destructive/80">
-        {isImageMode ? "No image model" : "No model"}
-      </span>
+      <span className="px-2 py-1 text-xs text-destructive/80">{emptyLabel}</span>
     );
   }
 
@@ -181,11 +175,7 @@ const ModelSelectorImpl: FC<ModelSelectorProps> = ({
     const m = models[0];
     return (
       <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground">
-        {m.type === "image" ? (
-          <ImageIcon className="size-3.5" />
-        ) : (
-          <BotIcon className="size-3.5" />
-        )}
+        {modelTypeIcon(m.type)}
         <span className="truncate">{m.name}</span>
       </span>
     );
@@ -199,7 +189,59 @@ const ModelSelectorImpl: FC<ModelSelectorProps> = ({
   );
 };
 
+/**
+ * The primary model selector shown in the composer. Picks the chat model in
+ * every mode except Image mode (which picks the image model). Audio mode is
+ * chat-driven, so it also shows the chat model here; the audio backend is
+ * chosen separately via {@link AudioModelSelector}.
+ */
+const ModelSelectorImpl: FC<ModelSelectorProps> = (props) => {
+  const config = useConfig();
+  const agentId = useAgentId();
+  const chatModelId = useSelectedChatModelId();
+  const imageModelId = useSelectedImageModelId();
+
+  const isImageMode = agentId === "image";
+  const models = config.models.filter((m) =>
+    m.type === (isImageMode ? "image" : "chat"),
+  );
+
+  return (
+    <ModelSelectorView
+      {...props}
+      models={models}
+      value={isImageMode ? imageModelId : chatModelId}
+      onValueChange={
+        isImageMode
+          ? (v) => { if (v) setSelectedImageModelId(v); }
+          : (v) => { if (v) setSelectedChatModelId(v); }
+      }
+      emptyLabel={isImageMode ? "No image model" : "No model"}
+    />
+  );
+};
+
 const ModelSelector = memo(ModelSelectorImpl);
 (ModelSelector as any).displayName = "ModelSelector";
 
-export { ModelSelector };
+/** Audio backend selector, shown only in Audio mode. */
+const AudioModelSelectorImpl: FC<ModelSelectorProps> = (props) => {
+  const config = useConfig();
+  const audioModelId = useSelectedAudioModelId();
+  const models = config.models.filter((m) => m.type === "audio");
+
+  return (
+    <ModelSelectorView
+      {...props}
+      models={models}
+      value={audioModelId}
+      onValueChange={(v) => { if (v) setSelectedAudioModelId(v); }}
+      emptyLabel="No audio model"
+    />
+  );
+};
+
+const AudioModelSelector = memo(AudioModelSelectorImpl);
+(AudioModelSelector as any).displayName = "AudioModelSelector";
+
+export { ModelSelector, AudioModelSelector };

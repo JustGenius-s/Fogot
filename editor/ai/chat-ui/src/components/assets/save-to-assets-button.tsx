@@ -2,6 +2,7 @@ import { useState, type FC } from 'react'
 import { SaveIcon, CheckIcon, Loader2Icon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { saveGeneratedImage } from '@/lib/assets'
+import { useTranslation } from '@/lib/i18n'
 
 interface SaveToAssetsButtonProps {
   dataUrl: string
@@ -10,6 +11,7 @@ interface SaveToAssetsButtonProps {
 
 /** Saves a generated (in-chat) image into the asset library on demand. */
 export const SaveToAssetsButton: FC<SaveToAssetsButtonProps> = ({ dataUrl, mimeType }) => {
+  const { t } = useTranslation()
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [path, setPath] = useState('')
 
@@ -28,7 +30,7 @@ export const SaveToAssetsButton: FC<SaveToAssetsButtonProps> = ({ dataUrl, mimeT
     return (
       <span className="flex items-center gap-1 px-2 text-xs text-muted-foreground">
         <CheckIcon className="size-3.5 text-green-600" />
-        Saved to {path}
+        {t('assets.savedTo', { path })}
       </span>
     )
   }
@@ -46,7 +48,7 @@ export const SaveToAssetsButton: FC<SaveToAssetsButtonProps> = ({ dataUrl, mimeT
       ) : (
         <SaveIcon className="size-3.5" />
       )}
-      {state === 'error' ? 'Save failed, retry' : 'Save to assets'}
+      {state === 'error' ? t('assets.saveFailed') : t('assets.saveToAssets')}
     </Button>
   )
 }

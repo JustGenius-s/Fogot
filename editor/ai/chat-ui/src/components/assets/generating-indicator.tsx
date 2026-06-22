@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FC, type RefObject } from 'react'
+import { useTranslation, type MessageKey } from '@/lib/i18n'
 
-const STAGES = [
-  'Creating image',
-  'Sketching',
-  'Generating draft',
-  'Refining details',
-  'Almost done',
+const STAGE_KEYS: MessageKey[] = [
+  'gen.creating',
+  'gen.sketching',
+  'gen.draft',
+  'gen.refining',
+  'gen.almostDone',
 ]
 
 /**
@@ -123,11 +124,12 @@ const DotGridWave: FC<{ excludeRef: RefObject<HTMLElement | null> }> = ({
 
 /** Loading placeholder shown in chat while an image is being generated. */
 export const GeneratingImageIndicator: FC = () => {
+  const { t } = useTranslation()
   const [stage, setStage] = useState(0)
   const labelRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
-    if (stage >= STAGES.length - 1) return
+    if (stage >= STAGE_KEYS.length - 1) return
     const id = setTimeout(() => setStage((s) => s + 1), 2200)
     return () => clearTimeout(id)
   }, [stage])
@@ -139,7 +141,7 @@ export const GeneratingImageIndicator: FC = () => {
         ref={labelRef}
         className="absolute left-4 top-3 font-semibold text-foreground/90 text-sm"
       >
-        {STAGES[stage]}…
+        {t(STAGE_KEYS[stage])}…
       </span>
     </div>
   )

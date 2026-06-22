@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button'
 import { AssetThumb } from '@/components/assets/asset-thumb'
+import { AudioPlayer } from '@/components/assets/audio-player'
 import { useDesigns } from '@/components/assets/use-designs'
 import {
   type DesignEntry,
@@ -25,9 +26,11 @@ import {
   designTitle,
 } from '@/lib/designs'
 import { bridgeRPC } from '@/bridge'
+import { useTranslation } from '@/lib/i18n'
 
 /** Browse design documents stored under res://.design/. */
 export const DesignGallery: FC<{ dir?: string }> = ({ dir = DESIGN_DIR }) => {
+  const { t } = useTranslation()
   const { designs, exists, loading, error, reload } = useDesigns(dir)
   const [preview, setPreview] = useState<DesignEntry | null>(null)
 
@@ -45,10 +48,10 @@ export const DesignGallery: FC<{ dir?: string }> = ({ dir = DESIGN_DIR }) => {
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
-          {loading ? 'Loading…' : `${designs.length} designs`}
+          {loading ? t('common.loading') : t('design.designsCount', { count: designs.length })}
           <span className="ml-1 opacity-60">{dir}</span>
         </span>
-        <TooltipIconButton tooltip="Refresh" side="bottom" onClick={reload}>
+        <TooltipIconButton tooltip={t('common.refresh')} side="bottom" onClick={reload}>
           <RefreshCwIcon className="size-3.5" />
         </TooltipIconButton>
       </div>
@@ -70,8 +73,8 @@ export const DesignGallery: FC<{ dir?: string }> = ({ dir = DESIGN_DIR }) => {
       ) : !loading && designs.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border/60 px-4 py-10 text-center text-xs text-muted-foreground/70">
           <FileQuestionIcon className="size-6 opacity-50" />
-          {exists ? 'No designs yet' : `Folder not found: ${dir}`}
-          <span className="opacity-60">Switch to Design mode and ask the AI to design something</span>
+          {exists ? t('design.noDesigns') : t('design.folderNotFound', { dir })}
+          <span className="opacity-60">{t('design.noDesignsHint')}</span>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -138,11 +141,15 @@ const DesignPreviewDialog: FC<{
   onClose: () => void
   onChanged: () => void
 }> = ({ design, onClose, onChanged }) => {
+  const { t } = useTranslation()
   const [busy, setBusy] = useState(false)
 
   if (!design) return null
 
   const image = designImagePath(design.meta)
+  const voicePreview =
+    typeof design.meta.voice_preview === 'string' ? design.meta.voice_preview : undefined
+  const bgm = typeof design.meta.bgm === 'string' ? design.meta.bgm : undefined
 
   const handleDelete = async () => {
     setBusy(true)
@@ -172,6 +179,12 @@ const DesignPreviewDialog: FC<{
               <AssetThumb path={image} className="max-h-64 w-full" />
             </div>
           )}
+          {(voicePreview || bgm) && (
+            <div className="mb-3 flex flex-col gap-1.5">
+              {voicePreview && <AudioPlayer path={voicePreview} label={t('design.voiceLine')} />}
+              {bgm && <AudioPlayer path={bgm} label={t('design.bgm')} />}
+            </div>
+          )}
           <div className="aui-md text-sm">
             <Streamdown mode="static">{design.body}</Streamdown>
           </div>
@@ -184,15 +197,15 @@ const DesignPreviewDialog: FC<{
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={handleCopyPath} className="flex-1">
             <CopyIcon className="size-3.5" />
-            Copy Path
+            {t('common.copyPath')}
           </Button>
         </div>
 
         <div className="-mx-4 -mb-4 mt-1 flex items-center justify-between rounded-b-xl border-t border-border/40 bg-muted/20 px-4 py-3">
-          <span className="text-[11px] text-muted-foreground/50">Danger zone</span>
+          <span className="text-[11px] text-muted-foreground/50">{t('common.dangerZone')}</span>
           <Button variant="destructive" size="sm" disabled={busy} onClick={handleDelete}>
             <Trash2Icon className="size-3.5" />
-            Delete
+            {t('common.delete')}
           </Button>
         </div>
       </DialogContent>

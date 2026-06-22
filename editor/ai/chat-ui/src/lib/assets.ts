@@ -59,6 +59,35 @@ export async function readAssetDataUrl(path: string): Promise<string> {
   return dataUrl
 }
 
+/** Map a file extension to an audio MIME type. */
+export function getAudioMime(path: string): string {
+  const ext = path.split('.').pop()?.toLowerCase() ?? 'mp3'
+  const map: Record<string, string> = {
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    m4a: 'audio/mp4',
+    flac: 'audio/flac',
+    ogg: 'audio/ogg',
+    pcm: 'audio/L16',
+  }
+  return map[ext] ?? 'audio/mpeg'
+}
+
+/**
+ * Read an audio asset as a data URL, suitable for `<audio src>` playback.
+ * Cached by path (shares the image data-URL cache); use {@link invalidateAsset}
+ * to refresh after the file changes.
+ */
+export async function readAudioDataUrl(path: string): Promise<string> {
+  const cached = dataUrlCache.get(path)
+  if (cached) return cached
+
+  const base64 = await bridgeRPC('read_file', { path, binary: true })
+  const dataUrl = `data:${getAudioMime(path)};base64,${base64}`
+  dataUrlCache.set(path, dataUrl)
+  return dataUrl
+}
+
 /** Drop a cached data URL (e.g. after the file was overwritten or deleted). */
 export function invalidateAsset(path: string) {
   dataUrlCache.delete(path)

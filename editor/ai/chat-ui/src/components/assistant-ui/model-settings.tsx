@@ -26,6 +26,7 @@ import {
   type ModelAuthMode,
   type ModelType,
 } from "@/bridge";
+import { useTranslation, type MessageKey } from "@/lib/i18n";
 
 function emptyModel(type: ModelType = "chat"): ModelConfig {
   return {
@@ -33,13 +34,20 @@ function emptyModel(type: ModelType = "chat"): ModelConfig {
     type,
     name: "",
     apiKey: "",
-    apiEndpoint: "",
-    model: "",
+    apiEndpoint: type === "audio" ? "https://api.minimaxi.com" : "",
+    model: type === "audio" ? "speech-2.5-hd-preview" : "",
     authMode: "bearer",
     maxTokens: 4096,
     temperature: 0.7,
+    ...(type === "audio" ? { provider: "minimax" } : {}),
   };
 }
+
+const MODEL_TYPE_KEY: Record<ModelType, MessageKey> = {
+  chat: "type.chat",
+  image: "type.image",
+  audio: "type.audio",
+};
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none transition-colors focus:border-ring focus:ring-2 focus:ring-ring/20 placeholder:text-muted-foreground/50";
@@ -65,6 +73,7 @@ const ModelForm: FC<{
   onSave: () => void;
   onCancel: () => void;
 }> = ({ model, isNew, onChange, onSave, onCancel }) => {
+  const { t } = useTranslation();
   const set = (patch: Partial<ModelConfig>) =>
     onChange({ ...model, ...patch });
   const authMode = model.authMode ?? "bearer";
@@ -75,18 +84,21 @@ const ModelForm: FC<{
       model.model &&
       (!requiresApiKey || model.apiKey),
   );
+  const typeLabel = t(MODEL_TYPE_KEY[model.type]);
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
         <span className="text-xs font-medium text-muted-foreground">
-          {isNew ? "New" : "Edit"} {model.type === "chat" ? "Chat" : "Image"} Model
+          {isNew
+            ? t("settings.newModel", { type: typeLabel })
+            : t("settings.editModel", { type: typeLabel })}
         </span>
       </div>
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>Name</label>
+          <label className={labelClass}>{t("settings.name")}</label>
           <input
             className={inputClass}
             placeholder="My Model"
@@ -96,7 +108,7 @@ const ModelForm: FC<{
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>Model ID</label>
+          <label className={labelClass}>{t("settings.modelId")}</label>
           <input
             className={inputClass}
             placeholder="gpt-4o"
@@ -106,7 +118,7 @@ const ModelForm: FC<{
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>API Endpoint</label>
+          <label className={labelClass}>{t("settings.apiEndpoint")}</label>
           <input
             className={inputClass}
             placeholder="https://api.openai.com/v1"
@@ -116,7 +128,7 @@ const ModelForm: FC<{
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>API Key</label>
+          <label className={labelClass}>{t("settings.apiKey")}</label>
           <input
             className={inputClass}
             type="password"
@@ -128,7 +140,7 @@ const ModelForm: FC<{
 
         {model.type === "image" && (
           <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>Auth Mode</label>
+            <label className={labelClass}>{t("settings.authMode")}</label>
             <SelectRoot
               value={authMode}
               onValueChange={(value) =>
@@ -139,15 +151,14 @@ const ModelForm: FC<{
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="bearer">Bearer header</SelectItem>
+                <SelectItem value="bearer">{t("settings.authBearer")}</SelectItem>
                 <SelectItem value="none">
-                  No automatic auth header
+                  {t("settings.authNone")}
                 </SelectItem>
               </SelectContent>
             </SelectRoot>
             <p className="text-[10px] text-muted-foreground/60">
-              APIMart uses Bearer header. Use no automatic auth header when an
-              OpenAPI gateway or proxy handles authentication.
+              {t("settings.authHint")}
             </p>
           </div>
         )}
@@ -156,7 +167,7 @@ const ModelForm: FC<{
           <>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Max Tokens</label>
+                <label className={labelClass}>{t("settings.maxTokens")}</label>
                 <input
                   className={inputClass}
                   type="number"
@@ -167,7 +178,7 @@ const ModelForm: FC<{
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className={labelClass}>Temperature</label>
+                <label className={labelClass}>{t("settings.temperature")}</label>
                 <input
                   className={inputClass}
                   type="number"
@@ -182,7 +193,7 @@ const ModelForm: FC<{
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className={labelClass}>Context Window (tokens)</label>
+              <label className={labelClass}>{t("settings.contextWindow")}</label>
               <input
                 className={inputClass}
                 type="number"
@@ -197,11 +208,11 @@ const ModelForm: FC<{
                 }
               />
               <p className="text-[10px] text-muted-foreground/60">
-                DeepSeek: 1M, GPT-4o: 128k, Claude: 200k
+                {t("settings.contextHint")}
               </p>
             </div>
             <div className="flex flex-col gap-1.5">
-              <label className={labelClass}>Extra Body (JSON)</label>
+              <label className={labelClass}>{t("settings.extraBody")}</label>
               <input
                 className={inputClass}
                 placeholder='{"reasoning_split": true}'
@@ -212,20 +223,54 @@ const ModelForm: FC<{
                 spellCheck={false}
               />
               <p className="text-[10px] text-muted-foreground/60">
-                Additional JSON merged into request body. MiniMax: {'{"reasoning_split": true}'}
+                {t("settings.extraBodyHint")} MiniMax: {'{"reasoning_split": true}'}
               </p>
             </div>
 
+          </>
+        )}
+
+        {model.type === "audio" && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className={labelClass}>{t("settings.provider")}</label>
+              <SelectRoot
+                value={model.provider ?? "minimax"}
+                onValueChange={(value) => set({ provider: value })}
+              >
+                <SelectTrigger className="w-full rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="minimax">MiniMax</SelectItem>
+                </SelectContent>
+              </SelectRoot>
+              <p className="text-[10px] text-muted-foreground/60">
+                {t("settings.providerHint")}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className={labelClass}>{t("settings.groupId")}</label>
+              <input
+                className={inputClass}
+                placeholder="MiniMax GroupId"
+                value={model.groupId ?? ""}
+                onChange={(e) => set({ groupId: e.target.value || undefined })}
+              />
+              <p className="text-[10px] text-muted-foreground/60">
+                {t("settings.groupIdHint")}
+              </p>
+            </div>
           </>
         )}
       </div>
 
       <DialogFooter>
         <Button variant="outline" size="sm" onClick={onCancel}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button size="sm" onClick={onSave} disabled={!canSave}>
-          {isNew ? "Add" : "Save"}
+          {isNew ? t("common.add") : t("common.save")}
         </Button>
       </DialogFooter>
     </div>
@@ -265,45 +310,49 @@ const ModelGroup: FC<{
   onEdit: (idx: number) => void;
   onDelete: (idx: number) => void;
   onAdd: (type: ModelType) => void;
-}> = ({ title, type, items, allModels, onEdit, onDelete, onAdd }) => (
-  <div className="flex flex-col gap-2">
-    <SectionHeader
-      title={title}
-      action={
-        <Button
-          variant="ghost"
-          size="xs"
-          className="text-muted-foreground"
-          onClick={() => onAdd(type)}
-        >
-          <PlusIcon className="size-3" />
-          Add
-        </Button>
-      }
-    />
-    {items.length > 0 ? (
-      <div className="flex flex-col gap-1.5">
-        {items.map((m) => {
-          const idx = allModels.indexOf(m);
-          return (
-            <ModelListItem
-              key={m.id}
-              model={m}
-              onEdit={() => onEdit(idx)}
-              onDelete={() => onDelete(idx)}
-            />
-          );
-        })}
-      </div>
-    ) : (
-      <div className="rounded-lg border border-dashed border-border/60 px-3 py-4 text-center text-xs text-muted-foreground/60">
-        No {title.toLowerCase()} models yet
-      </div>
-    )}
-  </div>
-);
+}> = ({ title, type, items, allModels, onEdit, onDelete, onAdd }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col gap-2">
+      <SectionHeader
+        title={title}
+        action={
+          <Button
+            variant="ghost"
+            size="xs"
+            className="text-muted-foreground"
+            onClick={() => onAdd(type)}
+          >
+            <PlusIcon className="size-3" />
+            {t("common.add")}
+          </Button>
+        }
+      />
+      {items.length > 0 ? (
+        <div className="flex flex-col gap-1.5">
+          {items.map((m) => {
+            const idx = allModels.indexOf(m);
+            return (
+              <ModelListItem
+                key={m.id}
+                model={m}
+                onEdit={() => onEdit(idx)}
+                onDelete={() => onDelete(idx)}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-border/60 px-3 py-4 text-center text-xs text-muted-foreground/60">
+          {t("settings.noModelsYet", { type: t(MODEL_TYPE_KEY[type]) })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const ModelSettings: FC = () => {
+  const { t } = useTranslation();
   const { models } = useConfig();
   const [editing, setEditing] = useState<ModelConfig | null>(null);
   const [editIndex, setEditIndex] = useState(-1);
@@ -336,6 +385,7 @@ export const ModelSettings: FC = () => {
 
   const chatModels = models.filter((m) => m.type === "chat");
   const imageModels = models.filter((m) => m.type === "image");
+  const audioModels = models.filter((m) => m.type === "audio");
 
   return (
     <Dialog>
@@ -344,9 +394,9 @@ export const ModelSettings: FC = () => {
       </DialogTrigger>
       <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[420px]">
         <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
+          <DialogTitle>{t("settings.title")}</DialogTitle>
           <DialogDescription>
-            Manage AI model configurations and preferences.
+            {t("settings.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -361,7 +411,7 @@ export const ModelSettings: FC = () => {
         ) : (
           <div className="flex flex-col gap-5">
             <ModelGroup
-              title="Chat Models"
+              title={t("settings.chatModels")}
               type="chat"
               items={chatModels}
               allModels={models}
@@ -371,9 +421,19 @@ export const ModelSettings: FC = () => {
             />
 
             <ModelGroup
-              title="Image Models"
+              title={t("settings.imageModels")}
               type="image"
               items={imageModels}
+              allModels={models}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onAdd={handleAdd}
+            />
+
+            <ModelGroup
+              title={t("settings.audioModels")}
+              type="audio"
+              items={audioModels}
               allModels={models}
               onEdit={handleEdit}
               onDelete={handleDelete}

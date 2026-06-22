@@ -7,10 +7,11 @@
  */
 
 import { useSyncExternalStore } from 'react'
+import { setLocale } from '@/lib/i18n'
 
 // ─── Model & Config Types ─────────────────────────────────────────
 
-export type ModelType = 'chat' | 'image'
+export type ModelType = 'chat' | 'image' | 'audio'
 export type ModelAuthMode = 'bearer' | 'none'
 
 export interface ModelConfig {
@@ -25,6 +26,10 @@ export interface ModelConfig {
   temperature?: number
   contextWindow?: number
   extraBody?: string
+  /** Audio backend provider (e.g. "minimax"). Audio models only. */
+  provider?: string
+  /** Provider account/group id appended as a query param (MiniMax GroupId). */
+  groupId?: string
 }
 
 export interface AIConfig {
@@ -36,6 +41,7 @@ export interface AIConfig {
 const MODELS_STORAGE_KEY = 'fogot-ai-models'
 const SELECTED_MODEL_KEY = 'fogot-ai-selected-model'
 const SELECTED_IMAGE_MODEL_KEY = 'fogot-ai-selected-image-model'
+const SELECTED_AUDIO_MODEL_KEY = 'fogot-ai-selected-audio-model'
 const IMAGE_SIZE_KEY = 'fogot-ai-image-size'
 const IMAGE_RESOLUTION_KEY = 'fogot-ai-image-resolution'
 const IMAGE_QUALITY_KEY = 'fogot-ai-image-quality'
@@ -89,12 +95,17 @@ export function getImageModels(): ModelConfig[] {
   return config.models.filter((m) => m.type === 'image')
 }
 
+export function getAudioModels(): ModelConfig[] {
+  return config.models.filter((m) => m.type === 'audio')
+}
+
 /** Replace the full models list (called from settings UI). */
 export function setModels(models: ModelConfig[]) {
   config = { ...config, models }
   saveModelsToStorage(models)
   autoSelectChatModel()
   autoSelectImageModel()
+  autoSelectAudioModel()
   emitConfig()
 }
 
@@ -171,6 +182,43 @@ export function setSelectedImageModelId(id: string) {
 export function getSelectedImageModel(): ModelConfig | undefined {
   const imageModels = getImageModels()
   return imageModels.find((m) => m.id === selectedImageModelId) ?? imageModels[0]
+}
+
+// ─── Selected Audio Model Store ───────────────────────────────────
+
+let selectedAudioModelId = localStorage.getItem(SELECTED_AUDIO_MODEL_KEY) ?? ''
+const audioModelListeners = new Set<() => void>()
+
+function autoSelectAudioModel() {
+  const audioModels = config.models.filter((m) => m.type === 'audio')
+  if (audioModels.length > 0 && !audioModels.find((m) => m.id === selectedAudioModelId)) {
+    selectedAudioModelId = audioModels[0].id
+    try { localStorage.setItem(SELECTED_AUDIO_MODEL_KEY, selectedAudioModelId) } catch {}
+    audioModelListeners.forEach((fn) => fn())
+  }
+}
+
+autoSelectAudioModel()
+
+export function useSelectedAudioModelId(): string {
+  return useSyncExternalStore(
+    (listener) => {
+      audioModelListeners.add(listener)
+      return () => audioModelListeners.delete(listener)
+    },
+    () => selectedAudioModelId,
+  )
+}
+
+export function setSelectedAudioModelId(id: string) {
+  selectedAudioModelId = id
+  try { localStorage.setItem(SELECTED_AUDIO_MODEL_KEY, id) } catch {}
+  audioModelListeners.forEach((fn) => fn())
+}
+
+export function getSelectedAudioModel(): ModelConfig | undefined {
+  const audioModels = getAudioModels()
+  return audioModels.find((m) => m.id === selectedAudioModelId) ?? audioModels[0]
 }
 
 // ─── Image Generation Settings Stores ─────────────────────────────
@@ -349,6 +397,12 @@ export function setAgentId(id: string) {
     autoSelectChatModel()
     chatModelListeners.forEach((fn) => fn())
   }
+  // Audio mode is an LLM-driven agent (chat model) that calls audio tools,
+  // which in turn use the configured audio model.
+  if (id === 'audio') {
+    autoSelectAudioModel()
+    audioModelListeners.forEach((fn) => fn())
+  }
   agentListeners.forEach((fn) => fn())
 }
 
@@ -358,7 +412,7 @@ export function getAgentId(): string {
 
 // ─── Top-Level View Store ─────────────────────────────────────────
 
-export type AppView = 'chat' | 'assets' | 'design'
+export type AppView = 'chat' | 'assets' | 'design' | 'audio'
 
 let appView: AppView = 'chat'
 const viewListeners = new Set<() => void>()
@@ -586,6 +640,11 @@ export const chatBridge = {
 
   /** @deprecated C++ no longer pushes model config; models are managed in frontend localStorage. */
   setConfig(_configJson: string) {},
+
+  /** Set the UI locale from the editor (e.g. "zh_CN", "en"). */
+  setLocale(locale: string) {
+    if (locale) setLocale(locale)
+  },
 
   /** Add attachment from C++ file picker (path + base64 data URL for preview). */
   addAttachment(path: string, dataUrl: string = '') {

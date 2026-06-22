@@ -14,8 +14,9 @@ import { ModelSettings } from '@/components/assistant-ui/model-settings'
 import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getImageModels, getAttachments, clearAttachments, setActivePlan, useAppView, getAvailableSkills } from '@/bridge'
 import { AssetMode } from '@/components/assets/asset-mode'
 import { DesignMode } from '@/components/assets/design-mode'
+import { AudioMode } from '@/components/assets/audio-mode'
 import { allTools, getToolsForAgent } from '@/ai/tools'
-import { getDefaultSystemPrompt, getPlanSystemPrompt, getDesignSystemPrompt, getAgent } from '@/ai/agents'
+import { getDefaultSystemPrompt, getPlanSystemPrompt, getDesignSystemPrompt, getAudioSystemPrompt, getAgent } from '@/ai/agents'
 import { createImageChatTransport } from '@/ai/image-transport'
 import { configureDelegateTool } from '@/ai/tools'
 import {
@@ -31,6 +32,12 @@ import { EditFileToolUI } from '@/components/custom/edit-file-tool-ui'
 import { DelegateTaskToolUI } from '@/components/custom/delegate-task-tool-ui'
 import { ExitPlanModeToolUI } from '@/components/custom/create-plan-tool-ui'
 import { DesignToolUI } from '@/components/custom/design-tool-ui'
+import {
+  DesignVoiceToolUI,
+  CloneVoiceToolUI,
+  GenerateSpeechToolUI,
+  GenerateMusicToolUI,
+} from '@/components/custom/audio-tool-ui'
 import { SkillToolUI } from '@/components/custom/skill-tool-ui'
 import { ExecuteCommandToolUI } from '@/components/custom/execute-command-tool-ui'
 import {
@@ -43,6 +50,7 @@ import {
 } from '@/components/custom/file-ops-tool-ui'
 import { getBuiltinSkills, loadProjectSkills } from '@/ai/skills'
 import { setAvailableSkills, clearInvokedSkills } from '@/bridge'
+import { useTranslation } from '@/lib/i18n'
 
 // ─── Transport Wrapper (attachments + context compression) ────────
 
@@ -271,17 +279,20 @@ const StatusBar: FC<{ status: string }> = ({ status }) => {
 
 // ─── Unconfigured fallback (header + settings access) ─────────────
 
-const UnconfiguredView: FC = () => (
-  <div className="flex flex-col h-full bg-background">
-    <div className="flex items-center justify-between px-3 py-1.5 border-b border-border shrink-0">
-      <span className="text-sm font-medium text-foreground">AI Chat</span>
-      <ModelSettings />
+const UnconfiguredView: FC = () => {
+  const { t } = useTranslation()
+  return (
+    <div className="flex flex-col h-full bg-background">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-border shrink-0">
+        <span className="text-sm font-medium text-foreground">{t('app.aiChat')}</span>
+        <ModelSettings />
+      </div>
+      <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm p-4 text-center">
+        <p>{t('app.unconfigured')}</p>
+      </div>
     </div>
-    <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm p-4 text-center">
-      <p>Click ⚙ to add a chat model.</p>
-    </div>
-  </div>
-)
+  )
+}
 
 // ─── History Provider (per-thread message persistence) ────────────
 
@@ -414,6 +425,10 @@ const ChatProvider: FC<{
       <DelegateTaskToolUI />
       <ExitPlanModeToolUI />
       <DesignToolUI />
+      <DesignVoiceToolUI />
+      <CloneVoiceToolUI />
+      <GenerateSpeechToolUI />
+      <GenerateMusicToolUI />
       <SkillToolUI />
       <TooltipProvider>
         <MainView status={status} />
@@ -433,6 +448,10 @@ const MainView: FC<{ status: string }> = ({ status }) => {
     return <DesignMode />
   }
 
+  if (view === 'audio') {
+    return <AudioMode />
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 min-h-0">
@@ -446,6 +465,7 @@ const MainView: FC<{ status: string }> = ({ status }) => {
 // ─── App Root ─────────────────────────────────────────────────────
 
 export default function App() {
+  const { t } = useTranslation()
   useConfig()
   const agentId = useAgentId()
   const chatModelId = useSelectedChatModelId()
@@ -503,6 +523,13 @@ export default function App() {
       ])
       instructions = getDesignSystemPrompt()
       maxSteps = 25
+    } else if (agentId === 'audio') {
+      tools = getToolsForAgent([
+        'read_file', 'write_design', 'list_files', 'search_files',
+        'design_voice', 'clone_voice', 'generate_speech', 'generate_music', 'list_voices',
+      ])
+      instructions = getAudioSystemPrompt()
+      maxSteps = 30
     } else if (agentConfig?.allowedTools) {
       tools = getToolsForAgent(agentConfig.allowedTools)
       instructions = agentConfig.systemPrompt ?? getDefaultSystemPrompt(getAvailableSkills())
@@ -571,11 +598,11 @@ export default function App() {
   const status =
     agentId === 'image'
       ? getImageModels().length > 0
-        ? 'Ready'
-        : 'No image model configured'
+        ? t('app.ready')
+        : t('app.noImageModel')
       : !chatModel?.apiKey
-        ? 'No API key configured'
-        : 'Ready'
+        ? t('app.noApiKey')
+        : t('app.ready')
 
   return (
     <ChatProvider

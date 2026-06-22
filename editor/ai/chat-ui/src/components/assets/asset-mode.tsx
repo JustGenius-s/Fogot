@@ -2,13 +2,15 @@ import { type FC } from 'react'
 import { ModelSettings } from '@/components/assistant-ui/model-settings'
 import { ViewToggle } from '@/components/assets/view-toggle'
 import { AssetGallery } from '@/components/assets/asset-gallery'
+import { useTranslation } from '@/lib/i18n'
 
 /** Top-level asset view: browse and manage image assets. */
 export const AssetMode: FC = () => {
+  const { t } = useTranslation()
   return (
     <div className="flex h-full flex-col bg-background @container">
       <div className="flex items-center justify-between border-b border-border px-3 py-1.5 shrink-0">
-        <span className="text-sm font-medium text-foreground">Assets</span>
+        <span className="text-sm font-medium text-foreground">{t('assets.title')}</span>
         <div className="flex items-center gap-0.5">
           <ModelSettings />
           <ViewToggle />

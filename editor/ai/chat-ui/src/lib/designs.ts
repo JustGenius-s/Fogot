@@ -21,6 +21,12 @@ export interface DesignMeta {
   tags?: string[]
   portrait?: string
   icon?: string
+  /** Character voice id (audio mode). */
+  voice_id?: string
+  /** res:// path of the character's voice preview clip. */
+  voice_preview?: string
+  /** res:// path of the design's associated background music. */
+  bgm?: string
   [key: string]: unknown
 }
 
