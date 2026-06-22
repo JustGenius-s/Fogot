@@ -144,6 +144,11 @@ const messages = {
     zh: '合并进请求体的额外 JSON。',
   },
   'settings.provider': { en: 'Provider', zh: '提供方' },
+  'settings.providerAuto': { en: 'Auto-detect', zh: '自动检测' },
+  'settings.imageProviderHint': {
+    en: 'Leave on Auto-detect unless you need to force a specific provider.',
+    zh: '除非需要强制指定提供方，否则保持自动检测。',
+  },
   'settings.providerHint': {
     en: 'Audio backends differ per provider. Model ID is the default speech model (e.g. speech-2.5-hd-preview); music uses music-2.6.',
     zh: '不同提供方的音频接口不同。模型 ID 为默认语音合成模型（如 speech-2.5-hd-preview）；音乐使用 music-2.6。',

@@ -139,28 +139,50 @@ const ModelForm: FC<{
         </div>
 
         {model.type === "image" && (
-          <div className="flex flex-col gap-1.5">
-            <label className={labelClass}>{t("settings.authMode")}</label>
-            <SelectRoot
-              value={authMode}
-              onValueChange={(value) =>
-                set({ authMode: value as ModelAuthMode })
-              }
-            >
-              <SelectTrigger className="w-full rounded-lg">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bearer">{t("settings.authBearer")}</SelectItem>
-                <SelectItem value="none">
-                  {t("settings.authNone")}
-                </SelectItem>
-              </SelectContent>
-            </SelectRoot>
-            <p className="text-[10px] text-muted-foreground/60">
-              {t("settings.authHint")}
-            </p>
-          </div>
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className={labelClass}>{t("settings.provider")}</label>
+              <SelectRoot
+                value={model.provider || "auto"}
+                onValueChange={(value) => set({ provider: value === "auto" ? undefined : value })}
+              >
+                <SelectTrigger className="w-full rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">{t("settings.providerAuto")}</SelectItem>
+                  <SelectItem value="openai">OpenAI / OpenAI-compatible</SelectItem>
+                  <SelectItem value="apimart">APIMart</SelectItem>
+                  <SelectItem value="minimax">MiniMax</SelectItem>
+                </SelectContent>
+              </SelectRoot>
+              <p className="text-[10px] text-muted-foreground/60">
+                {t("settings.imageProviderHint")}
+              </p>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className={labelClass}>{t("settings.authMode")}</label>
+              <SelectRoot
+                value={authMode}
+                onValueChange={(value) =>
+                  set({ authMode: value as ModelAuthMode })
+                }
+              >
+                <SelectTrigger className="w-full rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bearer">{t("settings.authBearer")}</SelectItem>
+                  <SelectItem value="none">
+                    {t("settings.authNone")}
+                  </SelectItem>
+                </SelectContent>
+              </SelectRoot>
+              <p className="text-[10px] text-muted-foreground/60">
+                {t("settings.authHint")}
+              </p>
+            </div>
+          </>
         )}
 
         {model.type === "chat" && (
