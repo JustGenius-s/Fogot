@@ -39,12 +39,11 @@ export class MinimaxProvider implements ImageProvider {
 
     try {
       const base = apiBase(model)
-      const url = `${base}/image_generation`
       const body: Record<string, unknown> = {
         model: model.model,
         prompt,
         n: 1,
-        response_format: 'url',
+        response_format: 'base64',
         prompt_optimizer: true,
       }
 
@@ -65,24 +64,16 @@ export class MinimaxProvider implements ImageProvider {
         const ref = Array.isArray(referenceImage) ? referenceImage[0] : referenceImage
         const refData = await readReferenceImage(ref)
         body.subject_reference = [
-          { type: 'character', image_file: `data:${refData.mime};base64,${refData.base64.slice(0, 80)}...` },
+          { type: 'character', image_file: `data:${refData.mime};base64,${refData.base64}` },
         ]
       }
 
-      console.log('[Minimax] url:', url)
-      console.log('[Minimax] model config:', { provider: model.provider, endpoint: model.apiEndpoint, model: model.model, hasKey: !!model.apiKey, authMode: model.authMode })
-      console.log('[Minimax] body:', JSON.stringify(body, null, 2))
-
-      const resp = await fetch(url, {
+      const resp = await fetch(`${base}/image_generation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders(model) },
         body: JSON.stringify(body),
       })
-
-      console.log('[Minimax] response status:', resp.status)
       const text = await resp.text()
-      console.log('[Minimax] response body:', text.slice(0, 2000))
-
       if (!resp.ok) return { error: formatApiError(resp.status, text) }
 
       const json = JSON.parse(text)
@@ -90,13 +81,16 @@ export class MinimaxProvider implements ImageProvider {
         return { error: json.base_resp?.status_msg || 'Minimax API error' }
       }
 
+      const b64Items: string[] = json.data?.image_base64
+      if (Array.isArray(b64Items) && b64Items.length > 0) {
+        return { b64: b64Items[0], mediaType: 'image/jpeg' }
+      }
       const urls: string[] = json.data?.image_urls
       if (Array.isArray(urls) && urls.length > 0) {
         return await downloadImageUrl(urls[0])
       }
       return { error: 'No image data in Minimax response' }
     } catch (e: unknown) {
-      console.error('[Minimax] exception:', e)
       return { error: `Minimax image generation failed: ${e instanceof Error ? e.message : String(e)}` }
     }
   }

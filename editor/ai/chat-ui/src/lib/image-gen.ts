@@ -226,7 +226,6 @@ async function callImageModel(opts: GenerateImageOptions): Promise<ImageModelCal
   }
 
   const provider = resolveProvider(model)
-  console.log('[image-gen] model endpoint:', model.apiEndpoint, 'provider field:', model.provider, '→ resolved:', provider?.id)
   if (!provider) {
     return { error: 'No image provider matched. Set the "provider" field or check the API endpoint.' }
   }

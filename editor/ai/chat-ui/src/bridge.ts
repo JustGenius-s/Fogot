@@ -692,6 +692,13 @@ window.onunhandledrejection = (e: PromiseRejectionEvent) => {
   logToEditor('error', `Unhandled Promise rejection: ${msg}`)
 }
 
+const _origConsoleLog = console.log
+console.log = (...args: unknown[]) => {
+  _origConsoleLog.apply(console, args)
+  const msg = args.map(stringify).join(' ').trim()
+  if (msg) logToEditor('log', msg)
+}
+
 const _origConsoleError = console.error
 console.error = (...args: unknown[]) => {
   _origConsoleError.apply(console, args)
