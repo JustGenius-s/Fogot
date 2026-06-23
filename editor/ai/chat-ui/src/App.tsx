@@ -40,6 +40,7 @@ import {
   GenerateMusicToolUI,
 } from '@/components/custom/audio-tool-ui'
 import { SkillToolUI } from '@/components/custom/skill-tool-ui'
+import { QuestionToolUI } from '@/components/custom/question-tool-ui'
 import { ExecuteCommandToolUI } from '@/components/custom/execute-command-tool-ui'
 import {
   ReadFileToolUI,
@@ -419,6 +420,7 @@ const ChatProvider: FC<{
       <GenerateSpeechToolUI />
       <GenerateMusicToolUI />
       <SkillToolUI />
+      <QuestionToolUI />
       <TooltipProvider>
         <MainView />
       </TooltipProvider>

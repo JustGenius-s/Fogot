@@ -88,6 +88,10 @@ export {
   readImage,
 } from './tools/image-read'
 
+export {
+  askUser,
+} from './tools/question'
+
 // ─── Tool Collections ─────────────────────────────────────────────
 
 import {
@@ -161,6 +165,10 @@ import {
   readImage,
 } from './tools/image-read'
 
+import {
+  askUser,
+} from './tools/question'
+
 export const allTools = {
   // File operations
   read_file: readFile,
@@ -220,6 +228,9 @@ export const allTools = {
 
   // Image reading (multimodal)
   read_image: readImage,
+
+  // Question
+  ask_user: askUser,
 } as const
 
 export type ToolName = keyof typeof allTools

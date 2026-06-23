@@ -129,6 +129,14 @@ const ZH = {
 - 如果某步骤不需要则调用 update_plan(step_index, "skipped")
 这让用户能实时了解你的进度。`,
 
+  askingQuestions: `# 提问
+当你不确定用户意图或多个方案难以抉择时，使用 ask_user 工具提问：
+- 提供清晰完整的问题描述
+- 每道题给 2-4 个具体选项，选项简短（1-5 词）
+- 如果推荐某个方案，把它放在第一个并标注 "(Recommended)"
+- 问题数量控制在 1-3 个，不要一次问太多
+- 收到答案后根据答案继续工作，不要重复提问已明确的内容`,
+
   subAgentSection: (list: string) => `# 子代理委派
 你可以使用 delegate_task 工具将复杂任务委派给专门的子代理。
 可用的子代理：
@@ -226,6 +234,7 @@ function buildDefaultSystemPrompt(): string {
     l.gdscriptReference,
     l.safety,
     l.planExecution,
+    l.askingQuestions,
     buildSubAgentSection(),
   ].join('\n\n')
 }
