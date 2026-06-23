@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type FC, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type FC, type ReactNode } from 'react'
 import {
   AssistantRuntimeProvider,
   RuntimeAdapterProvider,
@@ -17,6 +17,7 @@ import { DesignMode } from '@/components/assets/design-mode'
 import { AudioMode } from '@/components/assets/audio-mode'
 import { allTools, getToolsForAgent } from '@/ai/tools'
 import { getDefaultSystemPrompt, getPlanSystemPrompt, getDesignSystemPrompt, getAudioSystemPrompt, getAgent } from '@/ai/agents'
+import { loadDesignTemplate } from '@/lib/designs'
 import { createImageChatTransport } from '@/ai/image-transport'
 import { configureDelegateTool } from '@/ai/tools'
 import {
@@ -484,6 +485,21 @@ export default function App() {
 
   const isConfigured = !!(chatModel?.apiKey && chatModel?.apiEndpoint && chatModel?.model)
 
+  // Design / audio modes share an optional project template (res://.design/_template.md).
+  // When the template changes we re-load so the next agent build picks it up.
+  const [designTemplate, setDesignTemplate] = useState<string | undefined>(undefined)
+  useEffect(() => {
+    let cancelled = false
+    if (agentId === 'design' || agentId === 'audio') {
+      loadDesignTemplate().then((t) => {
+        if (!cancelled) setDesignTemplate(t)
+      })
+    } else {
+      setDesignTemplate(undefined)
+    }
+    return () => { cancelled = true }
+  }, [agentId])
+
   const transport = useMemo(() => {
     // Image mode talks directly to the image model — no chat model required.
     if (agentId === 'image') return createImageChatTransport()
@@ -521,14 +537,14 @@ export default function App() {
       tools = getToolsForAgent([
         'read_file', 'write_design', 'list_files', 'search_files', 'generate_image',
       ])
-      instructions = getDesignSystemPrompt()
+      instructions = getDesignSystemPrompt(designTemplate)
       maxSteps = 25
     } else if (agentId === 'audio') {
       tools = getToolsForAgent([
         'read_file', 'write_design', 'list_files', 'search_files',
         'design_voice', 'clone_voice', 'generate_speech', 'generate_music', 'list_voices',
       ])
-      instructions = getAudioSystemPrompt()
+      instructions = getAudioSystemPrompt(designTemplate)
       maxSteps = 30
     } else if (agentConfig?.allowedTools) {
       tools = getToolsForAgent(agentConfig.allowedTools)
@@ -589,7 +605,7 @@ export default function App() {
       model: chatModel.model,
       contextWindow: chatModel.contextWindow,
     })
-  }, [chatModelId, agentId, isConfigured, chatModel])
+  }, [chatModelId, agentId, isConfigured, chatModel, designTemplate])
 
   if (!transport) {
     return <UnconfiguredView />

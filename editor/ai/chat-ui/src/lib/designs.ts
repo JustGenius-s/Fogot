@@ -11,6 +11,18 @@ import { bridgeRPC } from '@/bridge'
 /** Default project directory that holds design documents. */
 export const DESIGN_DIR = 'res://.design/'
 
+/**
+ * Slug for the optional project-wide design template (`res://.design/_template.md`).
+ *
+ * The template holds shared world-building / art-style / numeric-scale / tag
+ * vocabulary so that subsequent character/scene designs stay consistent. It is
+ * excluded from the regular design listing and gallery cards.
+ */
+export const TEMPLATE_SLUG = '_template'
+
+/** res:// path of the optional template file. */
+export const TEMPLATE_PATH = `${DESIGN_DIR}${TEMPLATE_SLUG}.md`
+
 /** Structured fields parsed from a design doc's YAML frontmatter. */
 export interface DesignMeta {
   name?: string
@@ -130,7 +142,11 @@ export async function listDesigns(dir: string = DESIGN_DIR): Promise<ListDesigns
   for (const line of raw.split('\n')) {
     const name = line.trim()
     if (!name || name.endsWith('/')) continue
-    if (name.toLowerCase().endsWith('.md')) files.push(name)
+    if (!name.toLowerCase().endsWith('.md')) continue
+    // Skip the project template — it is consumed as context, not as a gallery
+    // design entry.
+    if (name.toLowerCase() === `${TEMPLATE_SLUG}.md`) continue
+    files.push(name)
   }
 
   const base = dir.endsWith('/') ? dir : dir + '/'
@@ -155,4 +171,21 @@ export async function listDesigns(dir: string = DESIGN_DIR): Promise<ListDesigns
 /** Read the raw content of a single design doc. */
 export async function readDesign(path: string): Promise<string> {
   return bridgeRPC('read_file', { path })
+}
+
+/**
+ * Load the optional project design template (`res://.design/_template.md`).
+ *
+ * Returns the raw Markdown content when present, or `undefined` when the file
+ * does not exist / cannot be read. Callers use the returned string as context
+ * for the design / audio agents so that subsequent designs inherit the
+ * template's world / art style / numeric scale / tag vocabulary.
+ */
+export async function loadDesignTemplate(): Promise<string | undefined> {
+  try {
+    const raw = await bridgeRPC('read_file', { path: TEMPLATE_PATH })
+    return raw && raw.trim() ? raw : undefined
+  } catch {
+    return undefined
+  }
 }

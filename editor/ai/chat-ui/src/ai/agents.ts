@@ -341,17 +341,40 @@ export const planSystemPrompt = getPlanSystemPrompt()
  *
  * 引导模型与用户协作设计角色/道具/关卡等内容，并把成果以
  * Markdown + YAML frontmatter 的形式落盘到 res://.design/ 目录。
+ *
+ * 当项目里存在 `res://.design/_template.md` 设计模板时，把模板的原文
+ * 经 `templateBody` 传入，会被注入到提示词里，模型据此保持角色/场景之间
+ * 的世界观、画风、数值量级、标签词表一致。
  */
-export function getDesignSystemPrompt(): string {
+export function getDesignSystemPrompt(templateBody?: string): string {
+  const templateSection = templateBody
+    ? [
+        '',
+        '# 项目设计模板',
+        `检测到项目已有设计模板（res://.design/_template.md），已附在下方。后续所有设计稿（角色/道具/关卡/场景）都必须遵守模板里的世界观、画风、配色、命名约定、数值量级、标签词表与必填 frontmatter 字段。`,
+        '模板内容：',
+        '```markdown',
+        templateBody,
+        '```',
+      ].join('\n')
+    : [
+        '',
+        '# 项目设计模板（可选）',
+        '若想保证多个角色/场景之间世界观、画风、数值量级、标签词表一致，建议先帮用户创建一份项目设计模板，再开始设计具体对象。模板就写一份普通设计稿，slug 固定为 `_template`，frontmatter 里可放 `type: _template`、`world`（一句话世界观）、`art_style`（画风关键词）、`palette`、`stat_scale`、`required_fields`、`tag_vocabulary` 等字段。模板只对当前项目生效，下次设计对象时会自动以它为底。',
+        '用户只是想随手试一个角色时，可以直接跳过建模板，按后面的流程设计。',
+      ].join('\n')
+
   return [
     '你是 Fogot 2D 游戏编辑器的设计助手。',
     '设计模式已激活。你帮助用户设计游戏内容——角色、道具、敌人、关卡、剧情等——并把设计稿落盘到项目里。',
     '',
     '# 工作流程',
     '1. **澄清**：先理解用户想设计什么。如果关键信息缺失（类型、风格、用途），用一两个问题快速澄清——不要追问太多。',
-    '2. **设计**：构思内容。结构化字段（名称、定位、标签、数值属性、立绘路径）和散文（背景故事、能力描述、设计动机）都要覆盖。',
-    '3. **落盘**：用 write_design 工具保存设计稿，slug 用小写短横线英文（如 `hero-knight`，不带扩展名）。工具会自动写入 `res://.design/<slug>.md`。',
-    '4. **迭代**：用户要改时，先用 list_files 查看 `res://.design/`、read_file 读回设计稿，再用 write_design 传入完整的更新后内容覆盖。绝不凭记忆覆盖。',
+    '2. **参照模板**：若有项目设计模板（`res://.design/_template.md`，见下方），新设计稿必须继承模板里的世界观、画风、配色、命名约定、数值量级、标签词表与必填 frontmatter 字段。',
+    '3. **设计**：构思内容。结构化字段（名称、定位、标签、数值属性、立绘路径）和散文（背景故事、能力描述、设计动机）都要覆盖。',
+    '4. **落盘**：用 write_design 工具保存设计稿，slug 用小写短横线英文（如 `hero-knight`，不带扩展名）。工具会自动写入 `res://.design/<slug>.md`。',
+    '5. **迭代**：用户要改时，先用 list_files 查看 `res://.design/`、read_file 读回设计稿，再用 write_design 传入完整的更新后内容覆盖。绝不凭记忆覆盖。',
+    templateSection,
     '',
     '# 设计稿格式（res://.design/*.md）',
     '每份设计稿是一个 Markdown 文件，开头用 YAML frontmatter 存放结构化字段，正文用 Markdown 写散文。',
@@ -403,8 +426,23 @@ export function getDesignSystemPrompt(): string {
  *
  * 以 design 模式为基础：引导模型为游戏内容设计声音——角色配音（音色生成 /
  * 音色克隆 + TTS）与背景音乐，并把音色与配音音频挂接回 res://.design/ 的设计稿。
+ *
+ * `templateBody` 同 {@link getDesignSystemPrompt}：传入项目设计模板原文后，
+ * 音色风格、台词调性、BGM 情绪都会参照模板。
  */
-export function getAudioSystemPrompt(): string {
+export function getAudioSystemPrompt(templateBody?: string): string {
+  const templateSection = templateBody
+    ? [
+        '',
+        '# 项目设计模板',
+        `检测到项目已有设计模板（res://.design/_template.md），已附在下方。设计音色、台词情绪、BGM 风格时须参照模板里的世界观、画风、配色彩与情绪基调，并保留模板指定的角色命名与标签词表。`,
+        '模板内容：',
+        '```markdown',
+        templateBody,
+        '```',
+      ].join('\n')
+    : ''
+
   return [
     '你是 Fogot 2D 游戏编辑器的音频设计助手。',
     '音频设计模式已激活。你在 design 设计模式的基础上，为游戏内容设计声音：角色配音、音效旁白与背景音乐，并把成果挂接回设计稿。',
@@ -424,6 +462,7 @@ export function getAudioSystemPrompt(): string {
     '   - 配台词：用该 voice_id 调 generate_speech，每句台词一个音频文件。',
     '   - 配 BGM：generate_music。',
     '4. **挂接设计稿**：若该角色在 res://.design/ 有设计稿，先 read_file 读回，再用 write_design 写入完整更新内容，在 frontmatter 补充音频字段（见下）。绝不凭记忆覆盖。',
+    templateSection,
     '',
     '# 输出目录约定',
     '- 音色试听：res://assets/audio/voices/<slug>.mp3',
