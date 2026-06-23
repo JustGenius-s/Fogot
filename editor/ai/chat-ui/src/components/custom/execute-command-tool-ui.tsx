@@ -8,7 +8,7 @@ import { makeAssistantToolUI, useScrollLock } from '@assistant-ui/react'
 import {
   ChevronDownIcon,
   SquareIcon,
-  TerminalIcon,
+  SquareTerminalIcon,
 } from 'lucide-react'
 import {
   Collapsible,
@@ -129,27 +129,24 @@ export const ExecuteCommandToolUI = makeAssistantToolUI<
         ref={collapsibleRef}
         open={open}
         onOpenChange={handleOpenChange}
-        className={cn(
-          'my-1 rounded-lg border border-border/50 bg-muted/30 overflow-hidden',
-          isCancelled && 'opacity-60',
-        )}
+        className={cn(isCancelled && 'opacity-60')}
       >
-        <CollapsibleTrigger className="group flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50 transition-colors">
+        <CollapsibleTrigger className="group/trigger flex w-full items-center gap-2 py-0.5 text-left text-sm text-muted-foreground transition-colors hover:text-foreground">
           <span className="relative size-3.5 shrink-0">
-            <TerminalIcon className="size-3.5 text-muted-foreground absolute inset-0 transition-opacity group-hover:opacity-0" />
+            <SquareTerminalIcon className="size-3.5 absolute inset-0 transition-opacity group-hover/trigger:opacity-0" />
             <ChevronDownIcon
               className={cn(
-                'size-3.5 text-muted-foreground absolute inset-0 transition-all opacity-0 group-hover:opacity-100',
+                'size-3.5 absolute inset-0 transition-all opacity-0 group-hover/trigger:opacity-100',
                 !open && '-rotate-90',
               )}
             />
           </span>
-          <code className="flex-1 truncate font-mono text-xs text-foreground/90">
+          <code className="flex-1 truncate font-mono text-xs">
             {command}
           </code>
           {isRunning && (
             <>
-              <span className="text-[11px] text-muted-foreground tabular-nums">
+              <span className="text-[11px] tabular-nums">
                 {elapsedStr}
               </span>
               <div
@@ -160,7 +157,7 @@ export const ExecuteCommandToolUI = makeAssistantToolUI<
                 className="ml-1 flex size-5 items-center justify-center rounded hover:bg-destructive/20 transition-colors cursor-pointer"
                 aria-label="Stop command"
               >
-                <SquareIcon className="size-3 fill-current text-muted-foreground hover:text-destructive" />
+                <SquareIcon className="size-3 fill-current hover:text-destructive" />
               </div>
             </>
           )}
@@ -171,22 +168,22 @@ export const ExecuteCommandToolUI = makeAssistantToolUI<
         </CollapsibleTrigger>
 
         <CollapsibleContent>
-          <div className="border-t border-border/30">
-            <pre
-              ref={outputRef}
-              className="max-h-[300px] overflow-auto bg-zinc-900 px-3 py-2.5 font-mono text-xs leading-relaxed text-zinc-200 scrollbar-thin"
-            >
-              {displayOutput || (
-                isRunning
-                  ? <span className="text-zinc-500 italic">Waiting for output...</span>
-                  : <span className="text-zinc-500 italic">No output</span>
-              )}
-            </pre>
-            {isCancelled && (
-              <div className="bg-zinc-900 border-t border-zinc-700/50 px-3 py-1.5 text-[11px] text-amber-400">
-                Command cancelled
-              </div>
+          <div className="pl-5">
+          <pre
+            ref={outputRef}
+            className="mt-1 max-h-[300px] overflow-auto bg-zinc-900 px-3 py-2.5 font-mono text-xs leading-relaxed text-zinc-200 rounded scrollbar-thin"
+          >
+            {displayOutput || (
+              isRunning
+                ? <span className="text-zinc-500 italic">Waiting for output...</span>
+                : <span className="text-zinc-500 italic">No output</span>
             )}
+          </pre>
+          {isCancelled && (
+            <div className="bg-zinc-900 rounded-b px-3 py-1.5 text-[11px] text-amber-400">
+              Command cancelled
+            </div>
+          )}
           </div>
         </CollapsibleContent>
       </Collapsible>

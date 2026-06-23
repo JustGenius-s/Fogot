@@ -134,12 +134,10 @@ export const DelegateTaskToolUI = makeAssistantToolUI<
           disabled={!canOpen}
           className={cn(
             'group/trigger',
-            'relative flex w-full items-center gap-2 rounded-md border px-3 py-1.5 text-left',
-            'border-border/60 bg-card/40 transition-colors',
-            'hover:border-border hover:bg-muted/30',
+            'relative flex w-full items-center gap-2 py-0.5 text-left',
+            'transition-colors text-muted-foreground hover:text-foreground',
             'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring',
             'disabled:cursor-default disabled:opacity-70',
-            'data-open:bg-muted/40',
           )}
           style={{ '--agent-tone': tone } as CSSProperties}
         >

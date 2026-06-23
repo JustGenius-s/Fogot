@@ -5,7 +5,7 @@
 import { makeAssistantToolUI, useAui } from '@assistant-ui/react'
 import { cn } from '@/lib/utils'
 import {
-  CheckCircle2Icon,
+  SquareFunctionIcon,
   CircleIcon,
   CircleDotIcon,
   SkipForwardIcon,
@@ -26,7 +26,7 @@ import { type FC, useState } from 'react'
 const StepIcon: FC<{ status: PlanStepState['status'] }> = ({ status }) => {
   switch (status) {
     case 'done':
-      return <CheckCircle2Icon className="size-4 text-emerald-500 shrink-0" />
+      return <SquareFunctionIcon className="size-4 text-emerald-500 shrink-0" />
     case 'in_progress':
       return <CircleDotIcon className="size-4 text-primary shrink-0 animate-pulse" />
     case 'skipped':
@@ -82,7 +82,7 @@ const ApprovalActions: FC<{ args: ExitPlanModeArgs }> = ({ args }) => {
   if (decided === 'approved') return null
 
   return (
-    <div className="flex items-center justify-end px-4">
+    <div className="flex items-center justify-end">
       <Button size="sm" onClick={handleApprove} disabled={decided !== null}>
         <PlayIcon data-icon="inline-start" />
         Execute
@@ -100,13 +100,13 @@ const PlanCardContent: FC<{ args: ExitPlanModeArgs; isDone: boolean }> = ({ args
   const showButtons = !activePlan && (args.steps ?? []).length > 0
 
   return (
-    <div className="aui-tool-fallback-root w-full rounded-lg border py-3">
-      <div className="flex items-center gap-2 px-4 pb-2 text-sm">
-        <ListTodoIcon className="size-4 text-muted-foreground" />
+    <div className="w-full">
+      <div className="flex items-center gap-2 py-0.5 text-sm text-muted-foreground">
+        <ListTodoIcon className="size-3.5 shrink-0" />
         <span className="font-medium">Plan</span>
       </div>
 
-      <div className="px-4 space-y-1.5">
+      <div className="space-y-1.5 pl-5">
         {steps.map((step, i) => (
           <div key={i} className="flex items-center gap-2">
             <StepIcon status={step.status} />

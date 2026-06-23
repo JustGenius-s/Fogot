@@ -58,7 +58,6 @@ export const EditFileToolUI = makeAssistantToolUI<EditFileArgs, string>({
       <Collapsible
         open={open}
         onOpenChange={setOpen}
-        className="rounded-md"
       >
         <CollapsibleTrigger
           disabled={isRunning || !hasDiff}
@@ -84,18 +83,20 @@ export const EditFileToolUI = makeAssistantToolUI<EditFileArgs, string>({
         </CollapsibleTrigger>
         <CollapsibleContent
           className={cn(
-            'overflow-hidden border-t border-border/50',
+            'overflow-hidden',
             'data-[state=closed]:animate-collapsible-up',
             'data-[state=open]:animate-collapsible-down',
             'data-[state=closed]:fill-mode-forwards',
           )}
         >
           {hasDiff && (
-            <PierreDiff
-              path={args.path}
-              oldContent={oldStr}
-              newContent={newStr}
-            />
+            <div className="pl-5">
+              <PierreDiff
+                path={args.path}
+                oldContent={oldStr}
+                newContent={newStr}
+              />
+            </div>
           )}
         </CollapsibleContent>
       </Collapsible>

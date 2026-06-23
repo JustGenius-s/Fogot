@@ -58,37 +58,30 @@ const CardShell = ({
 }) => {
   const { t } = useTranslation()
   return (
-  <div className="w-full overflow-hidden rounded-lg border">
-    <div className="flex items-center gap-2 border-b border-border/50 bg-muted/40 px-3 py-1.5 text-xs">
+  <div className="flex flex-col gap-1 py-0.5">
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
       {running ? (
-        <LoaderIcon className="size-3.5 shrink-0 animate-spin text-muted-foreground" />
+        <LoaderIcon className="size-3.5 shrink-0 animate-spin" />
       ) : error ? (
         <AlertCircleIcon className="size-3.5 shrink-0 text-destructive" />
       ) : (
-        <Icon className="size-3.5 shrink-0 text-muted-foreground" />
+        <Icon className="size-3.5 shrink-0" />
       )}
-      <span className="font-medium text-muted-foreground">{label}</span>
-      {title && <span className="truncate text-muted-foreground/70">{title}</span>}
-    </div>
-
-    <div className="flex flex-col gap-2 p-3">
-      {children}
+      <span className="shrink-0">{label}</span>
+      {title && <span className="truncate">{title}</span>}
       {error && <span className="text-xs text-destructive">{error}</span>}
-      {audioPath && <AudioPlayer path={audioPath} />}
-    </div>
-
-    {showVoiceLibrary && !running && (
-      <div className="flex items-center justify-end gap-1 border-t border-border/40 px-2 py-1.5">
+      {showVoiceLibrary && !running && (
         <button
           type="button"
           onClick={() => setAppView('audio')}
-          className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:bg-accent hover:text-foreground transition-colors"
         >
-          <AudioLinesIcon className="size-3.5" />
-          {t('audio.voiceLibrary')}
+          <AudioLinesIcon className="size-3" />
         </button>
-      </div>
-    )}
+      )}
+    </div>
+    {children && <div className="pl-5 flex flex-col gap-1">{children}</div>}
+    {audioPath && <div className="pl-5"><AudioPlayer path={audioPath} /></div>}
   </div>
   )
 }

@@ -3,7 +3,7 @@
  */
 
 import { makeAssistantToolUI } from '@assistant-ui/react'
-import { SparklesIcon, CheckCircle2Icon, AlertCircleIcon } from 'lucide-react'
+import { SparklesIcon, SquareFunctionIcon, AlertCircleIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface UseSkillArgs {
@@ -22,7 +22,7 @@ export const SkillToolUI = makeAssistantToolUI<UseSkillArgs, string>({
       <div className={cn('my-1.5 flex items-center gap-2 py-0.5 text-sm text-muted-foreground', isError && 'text-destructive')}>
         {isError ? <AlertCircleIcon className="size-3.5 shrink-0" />
         : isRunning ? <SparklesIcon className="size-3.5 shrink-0 animate-pulse" />
-        : <CheckCircle2Icon className="size-3.5 shrink-0 text-emerald-500" />}
+        : <SquareFunctionIcon className="size-3.5 shrink-0 text-emerald-500" />}
         <span className="shrink-0 text-foreground/90">Skill: {label}</span>
         <span className="text-xs text-muted-foreground/50">
           {isRunning ? 'Loading…' : isError ? 'Not found' : isAlready ? 'Already loaded' : 'Loaded'}

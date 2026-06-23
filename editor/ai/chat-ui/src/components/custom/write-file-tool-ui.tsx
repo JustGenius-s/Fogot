@@ -92,7 +92,6 @@ export const WriteFileToolUI = makeAssistantToolUI<WriteFileArgs, string>({
       <Collapsible
         open={open}
         onOpenChange={setOpen}
-        className="rounded-md"
       >
         <CollapsibleTrigger
           disabled={isRunning || !hasChanges}
@@ -117,18 +116,20 @@ export const WriteFileToolUI = makeAssistantToolUI<WriteFileArgs, string>({
         </CollapsibleTrigger>
         <CollapsibleContent
           className={cn(
-            'overflow-hidden border-t border-border/50',
+            'overflow-hidden',
             'data-[state=closed]:animate-collapsible-up',
             'data-[state=open]:animate-collapsible-down',
             'data-[state=closed]:fill-mode-forwards',
           )}
         >
           {hasChanges && (
-            <PierreDiff
-              path={args.path}
-              oldContent={oldContent}
-              newContent={newContent}
-            />
+            <div className="pl-5">
+              <PierreDiff
+                path={args.path}
+                oldContent={oldContent}
+                newContent={newContent}
+              />
+            </div>
           )}
         </CollapsibleContent>
       </Collapsible>
