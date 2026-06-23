@@ -99,6 +99,16 @@
   background: oklch(1 0 0 / 20%);
 }
 
+/* ─── Spinner (thread-list "working" indicator) ─────────────────── */
+@keyframes fogot-spinner {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 1; }
+}
+@keyframes fogot-spinner-dim {
+  0%, 100% { opacity: 0.1; }
+  50%      { opacity: 0.45; }
+}
+
 /* Sub-agent orbiting dot indicator */
 @keyframes orbit {
   0%   { transform: rotate(0deg)   translateX(3.5px) rotate(0deg); }

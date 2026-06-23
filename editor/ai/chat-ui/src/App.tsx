@@ -11,7 +11,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Thread } from '@/components/assistant-ui/thread'
 import { ModelSettings } from '@/components/assistant-ui/model-settings'
-import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getImageModels, getAttachments, clearAttachments, setActivePlan, useAppView, getAvailableSkills } from '@/bridge'
+import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getAttachments, clearAttachments, setActivePlan, useAppView, getAvailableSkills } from '@/bridge'
 import { AssetMode } from '@/components/assets/asset-mode'
 import { DesignMode } from '@/components/assets/design-mode'
 import { AudioMode } from '@/components/assets/audio-mode'
@@ -267,17 +267,6 @@ function wrapTransport(
   return inner
 }
 
-// ─── Status Bar ───────────────────────────────────────────────────
-
-const StatusBar: FC<{ status: string }> = ({ status }) => {
-  if (!status) return null
-  return (
-    <div className="text-[11px] text-muted-foreground px-4 py-1 border-t border-border shrink-0 truncate">
-      {status}
-    </div>
-  )
-}
-
 // ─── Unconfigured fallback (header + settings access) ─────────────
 
 const UnconfiguredView: FC = () => {
@@ -376,8 +365,7 @@ function HistoryProvider({ children }: { children?: ReactNode }) {
 
 const ChatProvider: FC<{
   transport: DirectChatTransport
-  status: string
-}> = ({ transport, status }) => {
+}> = ({ transport }) => {
   const wrappedAdapter = useMemo(() => ({
     ...threadListAdapter,
     unstable_Provider: HistoryProvider,
@@ -432,13 +420,13 @@ const ChatProvider: FC<{
       <GenerateMusicToolUI />
       <SkillToolUI />
       <TooltipProvider>
-        <MainView status={status} />
+        <MainView />
       </TooltipProvider>
     </AssistantRuntimeProvider>
   )
 }
 
-const MainView: FC<{ status: string }> = ({ status }) => {
+const MainView: FC = () => {
   const view = useAppView()
 
   if (view === 'assets') {
@@ -458,7 +446,6 @@ const MainView: FC<{ status: string }> = ({ status }) => {
       <div className="flex-1 min-h-0">
         <Thread />
       </div>
-      <StatusBar status={status} />
     </div>
   )
 }
@@ -611,19 +598,9 @@ export default function App() {
     return <UnconfiguredView />
   }
 
-  const status =
-    agentId === 'image'
-      ? getImageModels().length > 0
-        ? t('app.ready')
-        : t('app.noImageModel')
-      : !chatModel?.apiKey
-        ? t('app.noApiKey')
-        : t('app.ready')
-
   return (
     <ChatProvider
       transport={transport}
-      status={status}
     />
   )
 }
