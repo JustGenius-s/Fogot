@@ -1,7 +1,13 @@
 /**
- * Shared header bar for file tool UIs.
+ * Shared file header bar for file tool UIs (edit / write / apply_patch).
  *
- * Shows: [FileIcon] [clickable filename] [optional line range] [optional stats]
+ * Styled after opencode desktop's `edit-trigger` / `write-trigger` /
+ * `apply-patch-trigger-content`:
+ *   [status-icon] [Label] [filename] [directory rtl-ellipsis] — [DiffChanges bars]
+ *
+ * The directory part is rendered separately from the filename with
+ * `direction: rtl` + ellipsis so long paths trim from the left, leaving
+ * the leaf filename readable.
  */
 
 import type { FC } from 'react'
@@ -17,6 +23,7 @@ import {
   BracesIcon,
   CodeIcon,
 } from 'lucide-react'
+import { DiffChanges } from '@/components/ui/diff-changes'
 import { cn } from '@/lib/utils'
 
 const EXT_ICON_MAP: Record<string, FC<{ className?: string }>> = {
@@ -67,6 +74,8 @@ interface FileHeaderProps {
   lineRange?: string
   additions?: number
   deletions?: number
+  /** Default `"bars"`. Pass `"text"` for the `+N -M` mono variant. */
+  changesVariant?: 'text' | 'bars'
   onFileClick?: () => void
   className?: string
 }
@@ -76,54 +85,94 @@ export function FileHeader({
   isRunning,
   label,
   lineRange,
-  additions,
-  deletions,
+  additions = 0,
+  deletions = 0,
+  changesVariant = 'text',
   onFileClick,
   className,
 }: FileHeaderProps) {
   const fileName = path.split('/').pop() ?? path
   const ext = fileName.split('.').pop()?.toLowerCase() ?? ''
   const Icon = getFileIcon(ext)
-  const hasStats = (additions != null && additions > 0) ||
-    (deletions != null && deletions > 0)
+  const directory = path.includes('/')
+    ? path.slice(0, path.length - fileName.length).replace(/\/$/, '')
+    : ''
+  const hasStats = additions > 0 || deletions > 0
 
   return (
     <div
+      data-component="file-header"
       className={cn(
-        'flex items-center gap-2 bg-muted/60 px-3 py-1.5 text-sm text-muted-foreground',
+        'flex h-8 w-full items-center gap-2 px-1 text-sm',
+        'min-w-0',
         className,
       )}
     >
-      {isRunning ? (
-        <LoaderIcon className="size-4 shrink-0 animate-spin" />
-      ) : (
-        <Icon className="size-4 shrink-0" />
-      )}
-      {label && <span className="shrink-0">{label}</span>}
-      <button
-        type="button"
-        onClick={onFileClick}
-        className="cursor-pointer truncate font-medium text-foreground/80 hover:text-foreground hover:underline underline-offset-2 transition-colors"
-      >
-        {fileName}
-      </button>
-      {lineRange && (
-        <span className="shrink-0 text-xs">{lineRange}</span>
-      )}
+      {/* status icon (spinner while running, file-type icon otherwise) */}
+      <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
+        {isRunning ? (
+          <LoaderIcon className="size-4 animate-spin" />
+        ) : (
+          <Icon className="size-4" />
+        )}
+      </span>
+
+      {/* title row: label + filename + directory + line range */}
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        {label && (
+          <span
+            data-slot="file-header-label"
+            className="shrink-0 text-sm font-medium capitalize text-foreground"
+          >
+            {label}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onFileClick?.()
+          }}
+          className="flex min-w-0 shrink items-center gap-2 cursor-pointer text-sm transition-colors hover:text-foreground"
+        >
+          <span
+            data-slot="file-header-filename"
+            className="shrink-0 truncate font-normal text-foreground/90"
+          >
+            {fileName}
+          </span>
+          {directory && (
+            <span
+              data-slot="file-header-directory"
+              className="min-w-0 flex-1 truncate text-muted-foreground/50"
+              style={{ direction: 'rtl', textAlign: 'left' }}
+              title={directory}
+            >
+              {directory}
+            </span>
+          )}
+        </button>
+        {lineRange && (
+          <span
+            data-slot="file-header-line-range"
+            className="shrink-0 font-mono text-xs text-muted-foreground/50"
+          >
+            {lineRange}
+          </span>
+        )}
+      </div>
+
+      {/* right-aligned diff stats */}
       {hasStats && (
-        <span className="ml-auto flex gap-1.5 text-xs shrink-0">
-          {additions != null && additions > 0 && (
-            <span className="text-green-600 dark:text-green-400">
-              +{additions}
-            </span>
-          )}
-          {deletions != null && deletions > 0 && (
-            <span className="text-red-600 dark:text-red-400">
-              -{deletions}
-            </span>
-          )}
-        </span>
+        <DiffChanges
+          additions={additions}
+          deletions={deletions}
+          variant={changesVariant}
+          className="shrink-0"
+        />
       )}
     </div>
   )
 }
+
+export default FileHeader

@@ -1,14 +1,22 @@
 /**
- * Custom Tool UI for write_file — renders a DiffViewer directly
- * with a clickable file header (no collapsible tool-call wrapper).
+ * Custom Tool UI for write_file — renders a diff using @pierre/diffs
+ * (Shiki syntax highlighting + bars indicators) with a collapsible file header.
  */
 
+import { useState, useMemo } from 'react'
 import { makeAssistantToolUI } from '@assistant-ui/react'
-import { DiffViewer } from '@/components/assistant-ui/diff-viewer'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import { PierreDiff } from '@/components/ui/pierre-diff'
 import { FileHeader } from '@/components/custom/file-header'
 import { writeFileOldContentCache } from '@/ai/tools'
 import { openFile } from '@/bridge'
-import { FileTextIcon, LoaderIcon } from 'lucide-react'
+import { FileTextIcon, LoaderIcon, ChevronRightIcon } from 'lucide-react'
+import { diffLines } from 'diff'
+import { cn } from '@/lib/utils'
 
 interface WriteFileArgs {
   path: string
@@ -19,9 +27,27 @@ interface WriteFileArgs {
 export const WriteFileToolUI = makeAssistantToolUI<WriteFileArgs, string>({
   toolName: 'write_file',
   render: ({ args, status }) => {
-    if (!args?.path) return null
+    const [open, setOpen] = useState(false)
 
     const isRunning = status?.type === 'running'
+
+    const oldContent = writeFileOldContentCache.get(args?.path ?? '') ?? ''
+    const newContent = args?.content ?? ''
+    const hasChanges = oldContent !== newContent
+
+    const stats = useMemo(() => {
+      if (!hasChanges) return { additions: 0, deletions: 0 }
+      const changes = diffLines(oldContent, newContent)
+      let additions = 0
+      let deletions = 0
+      for (const c of changes) {
+        if (c.added) additions += c.value.replace(/\n$/, '').split('\n').length
+        if (c.removed) deletions += c.value.replace(/\n$/, '').split('\n').length
+      }
+      return { additions, deletions }
+    }, [oldContent, newContent, hasChanges])
+
+    if (!args?.path) return null
 
     if (args.binary) {
       return (
@@ -43,11 +69,8 @@ export const WriteFileToolUI = makeAssistantToolUI<WriteFileArgs, string>({
       )
     }
 
-    const oldContent = writeFileOldContentCache.get(args.path) ?? ''
-    const newContent = args.content ?? ''
     const fileName = args.path.split('/').pop() ?? args.path
     const isNewFile = !oldContent
-    const hasChanges = oldContent !== newContent
 
     if (!hasChanges && !isRunning) {
       return (
@@ -66,28 +89,49 @@ export const WriteFileToolUI = makeAssistantToolUI<WriteFileArgs, string>({
     }
 
     return (
-      <div className="overflow-hidden rounded-lg border">
-        <FileHeader
-          path={args.path}
-          isRunning={isRunning}
-          label={isNewFile ? 'New' : 'Write'}
-          onFileClick={() => openFile(args.path)}
-        />
-        {hasChanges && (
-          <DiffViewer
-            oldFile={{ content: oldContent }}
-            newFile={{ content: newContent }}
-            variant="ghost"
-            size="sm"
-            showLineNumbers
-            showIcon={false}
-            showStats={false}
-            contextLines={2}
-            maxCollapsedLines={8}
-            className="rounded-none"
+      <Collapsible
+        open={open}
+        onOpenChange={setOpen}
+        className="rounded-md"
+      >
+        <CollapsibleTrigger
+          disabled={isRunning || !hasChanges}
+          className="group/trigger flex w-full items-center data-[disabled]:cursor-default"
+        >
+          <FileHeader
+            path={args.path}
+            isRunning={isRunning}
+            label={isNewFile ? 'New' : 'Write'}
+            additions={stats.additions}
+            deletions={stats.deletions}
+            onFileClick={() => openFile(args.path)}
           />
-        )}
-      </div>
+          {!isRunning && hasChanges && (
+            <ChevronRightIcon
+              className={cn(
+                'mr-2 size-4 shrink-0 text-muted-foreground/50 transition-transform duration-200',
+                'group-data-[state=open]/trigger:rotate-90',
+              )}
+            />
+          )}
+        </CollapsibleTrigger>
+        <CollapsibleContent
+          className={cn(
+            'overflow-hidden border-t border-border/50',
+            'data-[state=closed]:animate-collapsible-up',
+            'data-[state=open]:animate-collapsible-down',
+            'data-[state=closed]:fill-mode-forwards',
+          )}
+        >
+          {hasChanges && (
+            <PierreDiff
+              path={args.path}
+              oldContent={oldContent}
+              newContent={newContent}
+            />
+          )}
+        </CollapsibleContent>
+      </Collapsible>
     )
   },
 })
