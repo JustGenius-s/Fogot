@@ -9,16 +9,19 @@ import { getActivePlan, updatePlanStep } from '@/bridge'
 export const exitPlanMode = tool({
   description:
     'Signal that the plan is complete and ready for user approval. ' +
-    'You MUST call this tool after writing your plan. ' +
-    'Include the plan steps for progress tracking.',
+    'You MUST call this tool after composing your plan (in your reply text). ' +
+    'Pass the full plan markdown content so the user can review it.',
   inputSchema: z.object({
-    plan_summary: z.string().describe('Brief one-line summary of the plan (shown in the approval header)'),
+    plan_summary: z.string().describe('Brief one-line summary of the plan (shown in the card header)'),
+    plan_content: z.string().describe(
+      'The full plan markdown content. Include all sections: background, design decisions, file paths, implementation steps, verification.',
+    ),
     steps: z.array(
       z.string().describe('Step title (concise, actionable)'),
     ).min(1).describe('Implementation steps from the plan, in execution order'),
   }),
-  execute: async ({ plan_summary, steps }) => {
-    return JSON.stringify({ summary: plan_summary, steps })
+  execute: async ({ plan_summary, plan_content, steps }) => {
+    return JSON.stringify({ summary: plan_summary, content: plan_content, steps })
   },
 })
 

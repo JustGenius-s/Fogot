@@ -519,9 +519,9 @@ export default function App() {
 
     if (agentId === 'plan') {
       setActivePlan(null)
-      tools = getToolsForAgent(['read_file', 'list_files', 'search_files', 'exit_plan_mode'])
+      tools = getToolsForAgent(['read_file', 'list_files', 'search_files', 'get_class_docs', 'delegate_task', 'ask_user', 'exit_plan_mode'])
       instructions = getPlanSystemPrompt()
-      maxSteps = 15
+      maxSteps = 25
     } else if (agentId === 'design') {
       tools = getToolsForAgent([
         'read_file', 'write_design', 'list_files', 'search_files', 'generate_image',

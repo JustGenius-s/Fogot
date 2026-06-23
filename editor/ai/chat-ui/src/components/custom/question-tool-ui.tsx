@@ -1,5 +1,5 @@
 /**
- * Question Tool UI — renders ask_user calls inline. v4
+ * Question Tool UI — renders ask_user calls inline. refresh
  * Tab-based multi-question with radio/checkbox options and
  * toggleable custom text input. Styled after opencode's design.
  */
