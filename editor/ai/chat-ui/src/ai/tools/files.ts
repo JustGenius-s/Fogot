@@ -24,8 +24,30 @@ export const readFile = tool({
   execute: async (args) => bridgeRPC('read_file', args),
 })
 
-/** Cache of old file content before write, keyed by path. */
+/** Cache of old file content before write, keyed by path. Persisted so diffs survive restarts. */
 export const writeFileOldContentCache = new Map<string, string>()
+
+{
+  // Restore from localStorage on module init
+  try {
+    const raw = localStorage.getItem('fogot-file-write-cache')
+    if (raw) {
+      const data = JSON.parse(raw)
+      for (const [k, v] of Object.entries(data)) {
+        if (typeof v === 'string') writeFileOldContentCache.set(k, v)
+      }
+    }
+  } catch {}
+}
+
+function persistWriteCache(path: string, content: string) {
+  writeFileOldContentCache.set(path, content)
+  try {
+    const data: Record<string, string> = {}
+    for (const [k, v] of writeFileOldContentCache) data[k] = v
+    localStorage.setItem('fogot-file-write-cache', JSON.stringify(data))
+  } catch {}
+}
 
 export const writeFile = tool({
   description: [
@@ -44,17 +66,38 @@ export const writeFile = tool({
     if (!args.binary) {
       try {
         const old = await bridgeRPC('read_file', { path: args.path })
-        writeFileOldContentCache.set(args.path, old)
+        persistWriteCache(args.path, old)
       } catch {
-        writeFileOldContentCache.set(args.path, '')
+        persistWriteCache(args.path, '')
       }
     }
     return bridgeRPC('write_file', args)
   },
 })
 
-/** Cache of edit location info, keyed by path. */
+/** Cache of edit location info, keyed by path. Persisted so diffs survive restarts. */
 export const editFileLineCache = new Map<string, number>()
+
+{
+  try {
+    const raw = localStorage.getItem('fogot-file-edit-cache')
+    if (raw) {
+      const data = JSON.parse(raw)
+      for (const [k, v] of Object.entries(data)) {
+        if (typeof v === 'number') editFileLineCache.set(k, v)
+      }
+    }
+  } catch {}
+}
+
+function persistEditCache(path: string, line: number) {
+  editFileLineCache.set(path, line)
+  try {
+    const data: Record<string, number> = {}
+    for (const [k, v] of editFileLineCache) data[k] = v
+    localStorage.setItem('fogot-file-edit-cache', JSON.stringify(data))
+  } catch {}
+}
 
 export const editFile = tool({
   description: [
@@ -77,7 +120,7 @@ export const editFile = tool({
       const idx = content.indexOf(args.old_string)
       if (idx >= 0) {
         const linesBefore = content.slice(0, idx).split('\n')
-        editFileLineCache.set(args.path, linesBefore.length)
+        persistEditCache(args.path, linesBefore.length)
       }
     } catch { /* file unreadable, skip */ }
     return bridgeRPC('edit_file', args)

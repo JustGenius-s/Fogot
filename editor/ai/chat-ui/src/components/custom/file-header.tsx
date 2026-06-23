@@ -127,13 +127,21 @@ export function FileHeader({
             {label}
           </span>
         )}
-        <button
-          type="button"
+        <span
+          role="button"
+          tabIndex={onFileClick ? 0 : -1}
           onClick={(e) => {
             e.stopPropagation()
             onFileClick?.()
           }}
-          className="flex min-w-0 shrink items-center gap-2 cursor-pointer text-sm transition-colors hover:text-foreground"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault()
+              e.stopPropagation()
+              onFileClick?.()
+            }
+          }}
+          className="flex min-w-0 shrink items-center gap-2 cursor-pointer text-sm transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring rounded-sm"
         >
           <span
             data-slot="file-header-filename"
@@ -151,7 +159,7 @@ export function FileHeader({
               {directory}
             </span>
           )}
-        </button>
+        </span>
         {lineRange && (
           <span
             data-slot="file-header-line-range"
