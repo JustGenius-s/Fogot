@@ -9,7 +9,8 @@
 import { tool } from 'ai'
 import { z } from 'zod'
 import { bridgeRPC } from '@/bridge'
-import { DESIGN_DIR } from '@/lib/designs'
+import { DESIGN_DIR, parseDesign, syncDesignToResource } from '@/lib/designs'
+import { validateDesign } from '@/lib/design-schema'
 
 /** Old content before a design write, keyed by path (for inline diff/card). */
 export const designOldContentCache = new Map<string, string>()
@@ -50,6 +51,36 @@ export const writeDesign = tool({
       designOldContentCache.set(path, '')
     }
     await bridgeRPC('write_file', { path, content })
-    return JSON.stringify({ success: true, path })
+
+    // Validate frontmatter against the kind schema. Issues are advisory only —
+    // the write already succeeded; we surface them so the model can self-correct.
+    const { meta } = parseDesign(content)
+    const issues = validateDesign(meta)
+    return JSON.stringify({
+      success: true,
+      path,
+      ...(issues.length ? { issues } : {}),
+    })
+  },
+})
+
+export const syncDesign = tool({
+  description: [
+    'Export a finished design doc into a typed Godot Resource (.tres) the game can load() at runtime.',
+    'Reads res://.design/<slug>.md, (re)generates the per-kind Resource script under res://design/schema/,',
+    'and saves res://design/data/<slug>.tres with the design\'s structured fields.',
+    'Call this after the design (and any referenced designs) are finalized.',
+  ].join('\n'),
+  inputSchema: z.object({
+    slug: z.string().describe('Design slug (file name without extension), e.g. "hero-knight"'),
+  }),
+  execute: async ({ slug }) => {
+    const norm = slug
+      .trim()
+      .replace(/^res:\/\//, '')
+      .replace(/^\.design\//, '')
+      .replace(/\.md$/i, '')
+    const { tresPath, scriptPath } = await syncDesignToResource(norm)
+    return JSON.stringify({ success: true, tres_path: tresPath, script_path: scriptPath })
   },
 })

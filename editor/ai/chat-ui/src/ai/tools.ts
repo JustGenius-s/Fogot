@@ -72,6 +72,7 @@ export {
 
 export {
   writeDesign,
+  syncDesign,
   designOldContentCache,
   designPathForSlug,
 } from './tools/design'
@@ -151,6 +152,7 @@ import {
 
 import {
   writeDesign,
+  syncDesign,
 } from './tools/design'
 
 import {
@@ -218,6 +220,7 @@ export const allTools = {
 
   // Design mode
   write_design: writeDesign,
+  sync_design: syncDesign,
 
   // Audio mode
   design_voice: designVoiceTool,

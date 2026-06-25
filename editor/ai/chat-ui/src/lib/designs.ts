@@ -6,7 +6,15 @@
  * parses the lightweight frontmatter needed for gallery cards and chips.
  */
 
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
 import { bridgeRPC } from '@/bridge'
+import {
+  fieldsFor,
+  getKind,
+  generateKindScript,
+  scriptPathForKind,
+  tresPathForSlug,
+} from '@/lib/design-schema'
 
 /** Default project directory that holds design documents. */
 export const DESIGN_DIR = 'res://.design/'
@@ -61,53 +69,49 @@ interface ListDesignsResponse {
 
 // ─── Frontmatter parsing ──────────────────────────────────────────
 
+const FRONTMATTER_RE = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/
+
 /**
  * Split a design doc into its frontmatter block and Markdown body, and parse
- * the top-level frontmatter keys.
+ * the frontmatter with a real YAML parser.
  *
- * Only top-level scalar values and inline arrays (`[a, b]`) are parsed; nested
- * maps (e.g. `stats:`) are skipped for listing purposes.
+ * Unlike the previous regex parser, nested maps (e.g. `stats:`), block lists and
+ * inline arrays are all parsed, so the gallery / design sheet can read numeric
+ * stats and references. Malformed YAML resolves to an empty meta rather than
+ * throwing.
  */
 export function parseDesign(raw: string): { meta: DesignMeta; body: string } {
-  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/)
+  const match = raw.match(FRONTMATTER_RE)
   if (!match) return { meta: {}, body: raw.trim() }
 
-  const meta: DesignMeta = {}
-  for (const line of match[1].split('\n')) {
-    // Skip nested (indented) lines and list items — top-level keys only.
-    if (/^\s/.test(line)) continue
-    const sep = line.indexOf(':')
-    if (sep < 0) continue
-    const key = line.slice(0, sep).trim()
-    const rawValue = line.slice(sep + 1).trim()
-    if (!key) continue
-    if (rawValue === '') continue // nested map header (e.g. "stats:")
-    meta[key] = parseScalar(rawValue)
+  let meta: DesignMeta = {}
+  try {
+    const parsed = parseYaml(match[1])
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      meta = parsed as DesignMeta
+    }
+  } catch {
+    /* malformed frontmatter — fall back to empty meta */
   }
 
   return { meta, body: match[2].trim() }
 }
 
-function parseScalar(value: string): string | string[] {
-  // Inline array: [a, b, c]
-  if (value.startsWith('[') && value.endsWith(']')) {
-    return value
-      .slice(1, -1)
-      .split(',')
-      .map((s) => stripQuotes(s.trim()))
-      .filter(Boolean)
+/**
+ * Serialize structured frontmatter + Markdown body back into a full design doc.
+ * Used by the design sheet's in-place field editing so edits round-trip without
+ * the model in the loop.
+ */
+export function serializeDesign(meta: DesignMeta, body: string): string {
+  const cleaned: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(meta)) {
+    if (v === undefined || v === null) continue
+    if (typeof v === 'string' && v.trim() === '') continue
+    if (Array.isArray(v) && v.length === 0) continue
+    cleaned[k] = v
   }
-  return stripQuotes(value)
-}
-
-function stripQuotes(value: string): string {
-  if (
-    (value.startsWith('"') && value.endsWith('"')) ||
-    (value.startsWith("'") && value.endsWith("'"))
-  ) {
-    return value.slice(1, -1)
-  }
-  return value
+  const fm = stringifyYaml(cleaned).trimEnd()
+  return `---\n${fm}\n---\n\n${body.trim()}\n`
 }
 
 /** The portrait/icon asset path referenced by a design, if any. */
@@ -171,6 +175,122 @@ export async function listDesigns(dir: string = DESIGN_DIR): Promise<ListDesigns
 /** Read the raw content of a single design doc. */
 export async function readDesign(path: string): Promise<string> {
   return bridgeRPC('read_file', { path })
+}
+
+// ─── Resource export (design → .tres) ─────────────────────────────
+
+export interface SyncResult {
+  /** res:// path of the generated .tres data file. */
+  tresPath: string
+  /** res:// path of the generated per-kind Resource script. */
+  scriptPath: string
+}
+
+/**
+ * Export a design doc to a typed Godot Resource (.tres).
+ *
+ * Reads the .md, generates/refreshes the per-kind Resource script from the
+ * schema, then asks the C++ side to instantiate that script, set its exported
+ * properties from the frontmatter, and save the .tres. The .md stays the source
+ * of truth; the .tres is a derived artifact the game can `load()` at runtime.
+ */
+export async function syncDesignToResource(slug: string): Promise<SyncResult> {
+  const path = `${DESIGN_DIR}${slug}.md`
+  const raw = await bridgeRPC('read_file', { path })
+  const { meta } = parseDesign(raw)
+
+  const type = typeof meta.type === 'string' ? meta.type : undefined
+  const kind = getKind(type)
+  const scriptPath = scriptPathForKind(kind.id)
+  const tresPath = tresPathForSlug(slug)
+
+  // (Re)generate the per-kind Resource script so it always matches the schema.
+  await bridgeRPC('write_file', { path: scriptPath, content: generateKindScript(kind) })
+
+  const fields = { ...meta, id: slug }
+  await bridgeRPC('design_export_resource', {
+    tres_path: tresPath,
+    script_path: scriptPath,
+    fields: JSON.stringify(fields),
+  })
+
+  return { tresPath, scriptPath }
+}
+
+// ─── Relationship graph ───────────────────────────────────────────
+
+/** A single outgoing reference from one design to another. */
+export interface DesignRef {
+  /** The frontmatter field the reference came from (e.g. "skills"). */
+  field: string
+  /** Referenced design id (slug). */
+  to: string
+  /** Whether a design with that id exists in the set. */
+  exists: boolean
+}
+
+/** A single incoming reference (backlink) to a design. */
+export interface DesignBacklink {
+  /** Slug of the design that points here. */
+  from: string
+  /** The field on the source design that holds the reference. */
+  field: string
+}
+
+export interface DesignGraph {
+  /** Outgoing refs keyed by source slug. */
+  refs: Map<string, DesignRef[]>
+  /** Incoming refs keyed by target slug. */
+  backlinks: Map<string, DesignBacklink[]>
+  /** Refs whose target id does not exist, keyed by source slug. */
+  dangling: Map<string, DesignRef[]>
+}
+
+function refValues(value: unknown): string[] {
+  if (typeof value === 'string') return value.trim() ? [value.trim()] : []
+  if (Array.isArray(value)) {
+    return value.filter((v): v is string => typeof v === 'string' && v.trim().length > 0).map((v) => v.trim())
+  }
+  return []
+}
+
+/**
+ * Build the reference graph across a set of designs. For each design, the `ref`
+ * fields declared by its kind are resolved against the known id set to produce
+ * forward refs, backlinks and dangling (unresolved) references.
+ */
+export function buildDesignGraph(designs: DesignEntry[]): DesignGraph {
+  const ids = new Set(designs.map((d) => d.slug))
+  const refs = new Map<string, DesignRef[]>()
+  const backlinks = new Map<string, DesignBacklink[]>()
+  const dangling = new Map<string, DesignRef[]>()
+
+  for (const design of designs) {
+    const type = typeof design.meta.type === 'string' ? design.meta.type : undefined
+    const refFields = fieldsFor(type).filter((f) => f.type === 'ref')
+    const out: DesignRef[] = []
+    const bad: DesignRef[] = []
+
+    for (const field of refFields) {
+      for (const to of refValues(design.meta[field.key])) {
+        const exists = ids.has(to)
+        const ref: DesignRef = { field: field.key, to, exists }
+        out.push(ref)
+        if (exists) {
+          const list = backlinks.get(to) ?? []
+          list.push({ from: design.slug, field: field.key })
+          backlinks.set(to, list)
+        } else {
+          bad.push(ref)
+        }
+      }
+    }
+
+    if (out.length) refs.set(design.slug, out)
+    if (bad.length) dangling.set(design.slug, bad)
+  }
+
+  return { refs, backlinks, dangling }
 }
 
 /**

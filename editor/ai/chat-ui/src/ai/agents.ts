@@ -5,6 +5,7 @@
 
 import { getAvailableSkills } from '@/bridge'
 import { formatSkillListing } from './skills'
+import { describeSchemaForPrompt } from '@/lib/design-schema'
 
 // ─── Language Setting ─────────────────────────────────────────────
 
@@ -416,11 +417,15 @@ export function getDesignSystemPrompt(templateBody?: string): string {
     '## 设计动机',
     '……',
     '```',
-    'frontmatter 字段按内容类型灵活调整：',
-    '- 角色(character)：name/type/role/tags/portrait/stats',
-    '- 道具(item)：name/type/rarity/tags/icon/effects',
-    '- 关卡(level)：name/type/theme/difficulty/objectives',
-    '允许新增字段，但 `name` 和 `type` 是必填项。',
+    'frontmatter 字段按内容类型灵活调整。下面是编辑器能识别并结构化展示的实体类型与字段（type 取这些值时，画廊会渲染数值条/标签/关系卡片）：',
+    '```',
+    describeSchemaForPrompt(),
+    '```',
+    '字段约定：',
+    '- `name` 和 `type` 是必填项；`type` 尽量取上面列出的值（character/item/skill/enemy/level），其它值会归到"未分类"。',
+    '- `stats` 这类嵌套数值用标准 YAML 缩进的子字段（hp/attack/...），数字别加引号。',
+    '- 标注 `(ref->X)` 的字段（如角色的 `skills`、关卡的 `enemies`）填**其它设计稿的 slug**（不带扩展名），可用数组。这样设计之间会建立可点击的关系，悬空引用会被高亮告警——所以被引用的对象最好也建一份设计稿。',
+    '- 允许新增字段，编辑器会原样保留。',
     '',
 '# 配图',
     '- 需要立绘/图标时，用 generate_image 工具生成图像。',
@@ -436,11 +441,16 @@ export function getDesignSystemPrompt(templateBody?: string): string {
     '- 若该角色在 res://.design/ 已有设计稿，更新 frontmatter 补充音频字段（先用 read_file 读回，再用 write_design 写入完整内容）：voice_id / voice_preview / voice_lines（含 text 与 audio）/ bgm。',
     '- 音色一经生成/克隆即写入音色库（工具会自动登记），无需手动维护 voices.json。',
 
+    '# 落成游戏资源（.tres）',
+    '- 设计定稿后，用 sync_design 把设计稿导出成带类型的 Godot 资源：它会读取 res://.design/<slug>.md，按 schema 在 res://design/schema/ 生成对应的 Resource 脚本，并把结构化字段写入 res://design/data/<slug>.tres，游戏运行时可直接 load() 使用。',
+    '- 角色/敌人引用了技能、关卡引用了敌人等：先确保被引用对象也有设计稿，再分别 sync_design，避免悬空引用。',
+    '- 改过设计稿后重新 sync_design 即可保持 .tres 与设计稿一致。',
+    '',
     '# 规则',
     '- 设计稿一律通过 write_design 保存（它只写入 res://.design/ 目录）。',
     '- 编辑已有设计稿前必须先 read_file 读取。',
-    '- 不要写 GDScript 或场景文件——设计模式只产出设计文档与音频/图像资源，不实现功能。',
-    '- 完成后简要告诉用户你创建/更新了哪个设计稿，以及它的核心设定、配图与音频。',
+    '- 不要手写 GDScript 或场景文件——结构化数据通过 sync_design 自动生成；设计模式专注于设计文档与音频/图像资源。',
+    '- 完成后简要告诉用户你创建/更新了哪个设计稿，以及它的核心设定、配图与音频；若已落成 .tres 也一并说明。',
 ].join('\n')
 }
 

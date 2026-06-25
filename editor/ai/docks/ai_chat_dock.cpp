@@ -331,6 +331,8 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 		result = AIToolRPC::scene_connect_signal(args);
 	} else if (p_tool_name == "scene_instance_scene") {
 		result = AIToolRPC::scene_instance_scene(args);
+	} else if (p_tool_name == "design_export_resource") {
+		result = AIToolRPC::design_export_resource(args);
 	} else if (p_tool_name == "mention_suggestions") {
 		result = AIToolRPC::mention_suggestions(args);
 	} else {

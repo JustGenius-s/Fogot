@@ -528,7 +528,7 @@ export default function App() {
       maxSteps = 25
     } else if (agentId === 'design') {
       tools = getToolsForAgent([
-        'read_file', 'write_design', 'list_files', 'search_files', 'generate_image',
+        'read_file', 'write_design', 'sync_design', 'list_files', 'search_files', 'generate_image',
         'design_voice', 'clone_voice', 'generate_speech', 'generate_music', 'list_voices',
       ])
       instructions = getDesignSystemPrompt(designTemplate)
