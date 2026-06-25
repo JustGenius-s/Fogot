@@ -413,7 +413,7 @@ export function getAgentId(): string {
 
 // ─── Top-Level View Store ─────────────────────────────────────────
 
-export type AppView = 'chat' | 'assets' | 'design' | 'audio'
+export type AppView = 'chat' | 'assets' | 'design' | 'audio' | 'settings'
 
 let appView: AppView = 'chat'
 const viewListeners = new Set<() => void>()

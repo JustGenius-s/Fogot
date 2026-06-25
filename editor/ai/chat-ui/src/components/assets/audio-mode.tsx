@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FC } from 'react'
 import {
-  MessageSquareIcon,
+  ArrowLeftIcon,
   RefreshCwIcon,
   MicIcon,
   Trash2Icon,
@@ -60,18 +60,18 @@ export const AudioMode: FC = () => {
 
   return (
     <div className="flex h-full flex-col bg-background @container">
-      <div className="flex items-center justify-between border-b border-border px-3 py-1.5 shrink-0">
+      <div className="flex items-center gap-1 border-b border-border px-2 py-1.5 shrink-0">
+        <TooltipIconButton
+          tooltip={t('common.back')}
+          side="bottom"
+          className="size-7"
+          onClick={() => setAppView('chat')}
+        >
+          <ArrowLeftIcon className="size-4" />
+        </TooltipIconButton>
         <span className="text-sm font-medium text-foreground">{t('audio.voiceLibrary')}</span>
-        <div className="flex items-center gap-1">
+        <div className="ml-auto flex items-center gap-1">
           <AudioModelSelector />
-          <TooltipIconButton
-            tooltip={t('common.chat')}
-            side="bottom"
-            className="size-7"
-            onClick={() => setAppView('chat')}
-          >
-            <MessageSquareIcon className="size-4" />
-          </TooltipIconButton>
         </div>
       </div>
 

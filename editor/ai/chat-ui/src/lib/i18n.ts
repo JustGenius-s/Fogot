@@ -68,6 +68,7 @@ const messages = {
   'common.dangerZone': { en: 'Danger zone', zh: '危险操作' },
   'common.loading': { en: 'Loading…', zh: '加载中…' },
   'common.chat': { en: 'Chat', zh: '对话' },
+  'common.back': { en: 'Back', zh: '返回' },
   'common.more': { en: 'More', zh: '更多' },
   'common.edit': { en: 'Edit', zh: '编辑' },
   'common.copy': { en: 'Copy', zh: '复制' },

@@ -10,7 +10,7 @@ import { DirectChatTransport, ToolLoopAgent, stepCountIs } from 'ai'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Thread } from '@/components/assistant-ui/thread'
-import { ModelSettings } from '@/components/assistant-ui/model-settings'
+import { ModelSettings, SettingsView } from '@/components/assistant-ui/model-settings'
 import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getAttachments, clearAttachments, setActivePlan, useAppView, getAvailableSkills } from '@/bridge'
 import { AssetMode } from '@/components/assets/asset-mode'
 import { DesignMode } from '@/components/assets/design-mode'
@@ -441,6 +441,10 @@ const MainView: FC = () => {
 
   if (view === 'audio') {
     return <AudioMode />
+  }
+
+  if (view === 'settings') {
+    return <SettingsView />
   }
 
   return (

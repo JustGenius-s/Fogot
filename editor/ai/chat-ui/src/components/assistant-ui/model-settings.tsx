@@ -1,15 +1,6 @@
 "use client";
 
 import { useState, type FC } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import {
   SelectRoot,
@@ -18,14 +9,16 @@ import {
   SelectItem,
   SelectValue,
 } from "@/components/assistant-ui/select";
-import { SettingsIcon, PlusIcon, Trash2Icon, PencilIcon } from "lucide-react";
+import { SettingsIcon, PlusIcon, Trash2Icon, PencilIcon, ArrowLeftIcon } from "lucide-react";
 import {
   useConfig,
   setModels,
+  setAppView,
   type ModelConfig,
   type ModelAuthMode,
   type ModelType,
 } from "@/bridge";
+import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { useTranslation, type MessageKey } from "@/lib/i18n";
 
 function emptyModel(type: ModelType = "chat"): ModelConfig {
@@ -287,14 +280,14 @@ const ModelForm: FC<{
         )}
       </div>
 
-      <DialogFooter>
+      <div className="flex items-center justify-end gap-2 pt-1">
         <Button variant="outline" size="sm" onClick={onCancel}>
           {t("common.cancel")}
         </Button>
         <Button size="sm" onClick={onSave} disabled={!canSave}>
           {isNew ? t("common.add") : t("common.save")}
         </Button>
-      </DialogFooter>
+      </div>
     </div>
   );
 };
@@ -373,8 +366,8 @@ const ModelGroup: FC<{
   );
 };
 
-export const ModelSettings: FC = () => {
-  const { t } = useTranslation();
+/** Shared settings form/list state, used by the settings page and any future hosts. */
+function useSettingsState() {
   const { models } = useConfig();
   const [editing, setEditing] = useState<ModelConfig | null>(null);
   const [editIndex, setEditIndex] = useState(-1);
@@ -405,66 +398,112 @@ export const ModelSettings: FC = () => {
     setEditing(null);
   };
 
+  return {
+    models,
+    editing,
+    editIndex,
+    handleEdit,
+    handleAdd,
+    handleDelete,
+    handleSave,
+    setEditing,
+  };
+}
+
+/** Header gear button — opens the settings page (an AppView, not a modal). */
+export const ModelSettings: FC = () => {
+  const { t } = useTranslation();
+  return (
+    <TooltipIconButton
+      tooltip={t("settings.title")}
+      side="bottom"
+      className="size-7"
+      onClick={() => setAppView("settings")}
+    >
+      <SettingsIcon className="size-4" />
+    </TooltipIconButton>
+  );
+};
+
+/** Standalone settings page: model groups + inline edit form, mirroring the design/audio view chrome. */
+export const SettingsView: FC = () => {
+  const { t } = useTranslation();
+  const {
+    models,
+    editing,
+    editIndex,
+    handleEdit,
+    handleAdd,
+    handleDelete,
+    handleSave,
+    setEditing,
+  } = useSettingsState();
+
   const chatModels = models.filter((m) => m.type === "chat");
   const imageModels = models.filter((m) => m.type === "image");
   const audioModels = models.filter((m) => m.type === "audio");
 
   return (
-    <Dialog>
-      <DialogTrigger className="flex size-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-        <SettingsIcon className="size-4" />
-      </DialogTrigger>
-      <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[420px]">
-        <DialogHeader>
-          <DialogTitle>{t("settings.title")}</DialogTitle>
-          <DialogDescription>
-            {t("settings.description")}
-          </DialogDescription>
-        </DialogHeader>
+    <div className="flex h-full flex-col bg-background @container">
+      <div className="flex items-center gap-1 border-b border-border px-2 py-1.5 shrink-0">
+        <TooltipIconButton
+          tooltip={t("common.back")}
+          side="bottom"
+          className="size-7"
+          onClick={() => setAppView("chat")}
+        >
+          <ArrowLeftIcon className="size-4" />
+        </TooltipIconButton>
+        <span className="text-sm font-medium text-foreground">{t("settings.title")}</span>
+      </div>
 
-        {editing ? (
-          <ModelForm
-            model={editing}
-            isNew={editIndex < 0}
-            onChange={setEditing}
-            onSave={handleSave}
-            onCancel={() => setEditing(null)}
-          />
-        ) : (
-          <div className="flex flex-col gap-5">
-            <ModelGroup
-              title={t("settings.chatModels")}
-              type="chat"
-              items={chatModels}
-              allModels={models}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onAdd={handleAdd}
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="mx-auto flex w-full max-w-md flex-col gap-4">
+          <p className="text-xs text-muted-foreground">{t("settings.description")}</p>
+
+          {editing ? (
+            <ModelForm
+              model={editing}
+              isNew={editIndex < 0}
+              onChange={setEditing}
+              onSave={handleSave}
+              onCancel={() => setEditing(null)}
             />
+          ) : (
+            <div className="flex flex-col gap-5">
+              <ModelGroup
+                title={t("settings.chatModels")}
+                type="chat"
+                items={chatModels}
+                allModels={models}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onAdd={handleAdd}
+              />
 
-            <ModelGroup
-              title={t("settings.imageModels")}
-              type="image"
-              items={imageModels}
-              allModels={models}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onAdd={handleAdd}
-            />
+              <ModelGroup
+                title={t("settings.imageModels")}
+                type="image"
+                items={imageModels}
+                allModels={models}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onAdd={handleAdd}
+              />
 
-            <ModelGroup
-              title={t("settings.audioModels")}
-              type="audio"
-              items={audioModels}
-              allModels={models}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onAdd={handleAdd}
-            />
-
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+              <ModelGroup
+                title={t("settings.audioModels")}
+                type="audio"
+                items={audioModels}
+                allModels={models}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onAdd={handleAdd}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };

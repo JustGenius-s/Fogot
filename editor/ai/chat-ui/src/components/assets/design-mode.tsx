@@ -1,5 +1,5 @@
 import { type FC } from 'react'
-import { MessageSquareIcon } from 'lucide-react'
+import { ArrowLeftIcon } from 'lucide-react'
 import { setAppView } from '@/bridge'
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button'
 import { DesignGallery } from '@/components/assets/design-gallery'
@@ -10,16 +10,16 @@ export const DesignMode: FC = () => {
   const { t } = useTranslation()
   return (
     <div className="flex h-full flex-col bg-background @container">
-      <div className="flex items-center justify-between border-b border-border px-3 py-1.5 shrink-0">
-        <span className="text-sm font-medium text-foreground">{t('thread.designs')}</span>
+      <div className="flex items-center gap-1 border-b border-border px-2 py-1.5 shrink-0">
         <TooltipIconButton
-          tooltip={t('common.chat')}
+          tooltip={t('common.back')}
           side="bottom"
           className="size-7"
           onClick={() => setAppView('chat')}
         >
-          <MessageSquareIcon className="size-4" />
+          <ArrowLeftIcon className="size-4" />
         </TooltipIconButton>
+        <span className="text-sm font-medium text-foreground">{t('thread.designs')}</span>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
