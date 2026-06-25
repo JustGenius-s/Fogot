@@ -9,8 +9,9 @@ import { getActivePlan, updatePlanStep } from '@/bridge'
 export const exitPlanMode = tool({
   description:
     'Signal that the plan is complete and ready for user approval. ' +
-    'You MUST call this tool after composing your plan (in your reply text). ' +
-    'Pass the full plan markdown content so the user can review it.',
+    'You MUST call this tool after composing your plan. ' +
+    'Pass the full plan markdown content — it will be displayed in a plan card for user review. ' +
+    'Do NOT write the full plan in your reply text; keep your reply concise.',
   inputSchema: z.object({
     plan_summary: z.string().describe('Brief one-line summary of the plan (shown in the card header)'),
     plan_content: z.string().describe(
