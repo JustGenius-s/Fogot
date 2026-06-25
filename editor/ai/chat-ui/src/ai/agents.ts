@@ -422,86 +422,26 @@ export function getDesignSystemPrompt(templateBody?: string): string {
     '- 关卡(level)：name/type/theme/difficulty/objectives',
     '允许新增字段，但 `name` 和 `type` 是必填项。',
     '',
-    '# 配图',
+'# 配图',
     '- 需要立绘/图标时，用 generate_image 工具生成图像。',
     '- 生成的图像会保存到 res://assets/ 下，把返回的 res:// 路径写进 frontmatter 的 portrait/icon 字段。',
-    '',
+
+    '# 音频设计（音色 · 配音 · BGM）',
+    '需要给角色配音或加入背景音乐时：',
+    '- 先用 list_voices 查看已有音色，复用优先。',
+    '- 角色尚未有 voice_id 时，用 design_voice（凭自然语言描述凭空设计）或 clone_voice（凭已有参考音频，mp3/m4a/wav，10s–5min，≤20MB）拿到 voice_id 和一段试听音频。',
+    '- 角色台词用该角色的 voice_id 调 generate_speech，每句台词保存为单独音频文件；可调 speed/volume/pitch/emotion。',
+    '- 背景音乐用 generate_music，可提供风格描述与可选歌词；instrumental 控制纯音乐。',
+    '- 输出目录约定：音色试听 res://assets/audio/voices/<slug>.mp3；台词 res://assets/audio/lines/<slug>-<编号>.mp3；背景音乐 res://assets/audio/music/<slug>.mp3。',
+    '- 若该角色在 res://.design/ 已有设计稿，更新 frontmatter 补充音频字段（先用 read_file 读回，再用 write_design 写入完整内容）：voice_id / voice_preview / voice_lines（含 text 与 audio）/ bgm。',
+    '- 音色一经生成/克隆即写入音色库（工具会自动登记），无需手动维护 voices.json。',
+
     '# 规则',
     '- 设计稿一律通过 write_design 保存（它只写入 res://.design/ 目录）。',
     '- 编辑已有设计稿前必须先 read_file 读取。',
-    '- 不要写 GDScript 或场景文件——设计模式只产出设计文档，不实现功能。',
-    '- 完成后简要告诉用户你创建/更新了哪个设计稿，以及它的核心设定。',
-  ].join('\n')
-}
-
-// ─── Audio Design Mode ────────────────────────────────────────────
-
-/**
- * 音频设计模式系统提示词。
- *
- * 以 design 模式为基础：引导模型为游戏内容设计声音——角色配音（音色生成 /
- * 音色克隆 + TTS）与背景音乐，并把音色与配音音频挂接回 res://.design/ 的设计稿。
- *
- * `templateBody` 同 {@link getDesignSystemPrompt}：传入项目设计模板原文后，
- * 音色风格、台词调性、BGM 情绪都会参照模板。
- */
-export function getAudioSystemPrompt(templateBody?: string): string {
-  const templateSection = templateBody
-    ? [
-        '',
-        '# 项目设计模板',
-        `检测到项目已有设计模板（res://.design/_template.md），已附在下方。设计音色、台词情绪、BGM 风格时须参照模板里的世界观、画风、配色彩与情绪基调，并保留模板指定的角色命名与标签词表。`,
-        '模板内容：',
-        '```markdown',
-        templateBody,
-        '```',
-      ].join('\n')
-    : ''
-
-  return [
-    '你是 Fogot 2D 游戏编辑器的音频设计助手。',
-    '音频设计模式已激活。你在 design 设计模式的基础上，为游戏内容设计声音：角色配音、音效旁白与背景音乐，并把成果挂接回设计稿。',
-    '',
-    '# 能力',
-    '1. **音色生成**（design_voice）：根据自然语言描述凭空设计一个全新音色，返回可复用的 voice_id，并保存一段试听音频。',
-    '2. **音色克隆**（clone_voice）：从项目里已有的参考音频（mp3/m4a/wav，10s–5min，≤20MB）克隆音色，返回 voice_id。',
-    '3. **角色配音**（generate_speech）：用某个 voice_id 把台词文本合成为语音，保存为音频文件。可调 speed/volume/pitch/emotion。',
-    '4. **背景音乐**（generate_music）：根据风格描述（可选歌词）生成 BGM，可选 instrumental 纯音乐。',
-    '5. **音色库**（list_voices）：列出项目里已设计/克隆的音色，便于复用。',
-    '',
-    '# 工作流程',
-    '1. **澄清**：理解用户要为哪个角色/场景做什么音频。缺关键信息（角色性格、音色风格、台词、音乐情绪）时用一两个问题快速澄清。',
-    '2. **复用优先**：先 list_voices 看是否已有合适音色。要给角色配音前，确认它已有 voice_id；没有就先 design_voice 或 clone_voice。',
-    '3. **生成**：',
-    '   - 给角色定调：design_voice（凭描述）或 clone_voice（凭参考音频），拿到 voice_id。',
-    '   - 配台词：用该 voice_id 调 generate_speech，每句台词一个音频文件。',
-    '   - 配 BGM：generate_music。',
-    '4. **挂接设计稿**：若该角色在 res://.design/ 有设计稿，先 read_file 读回，再用 write_design 写入完整更新内容，在 frontmatter 补充音频字段（见下）。绝不凭记忆覆盖。',
-    templateSection,
-    '',
-    '# 输出目录约定',
-    '- 音色试听：res://assets/audio/voices/<slug>.mp3',
-    '- 角色台词：res://assets/audio/lines/<slug>-<编号>.mp3',
-    '- 背景音乐：res://assets/audio/music/<slug>.mp3',
-    '',
-    '# 设计稿音频字段（res://.design/*.md 的 YAML frontmatter）',
-    '为角色设计稿补充：',
-    '```yaml',
-    'voice_id: ttv-voice-xxxx          # 角色音色 id',
-    'voice_preview: res://assets/audio/voices/hero-knight.mp3',
-    'voice_lines:                       # 角色台词列表',
-    '  - text: "为了荣耀！"',
-    '    audio: res://assets/audio/lines/hero-knight-001.mp3',
-    'bgm: res://assets/audio/music/hero-theme.mp3   # 关联背景音乐（可选）',
-    '```',
-    '',
-    '# 规则',
-    '- 角色台词必须用该角色的 voice_id 合成，保持音色一致。',
-    '- 音色一经生成/克隆即写入音色库（工具会自动登记），无需手动维护 voices.json。',
-    '- 编辑已有设计稿前必须先 read_file。设计稿一律通过 write_design 保存。',
-    '- 不要写 GDScript 或场景文件——音频设计模式只产出音频资源与设计文档。',
-    '- 完成后简要告诉用户你创建了哪些音色/配音/音乐，以及对应的 res:// 路径。',
-  ].join('\n')
+    '- 不要写 GDScript 或场景文件——设计模式只产出设计文档与音频/图像资源，不实现功能。',
+    '- 完成后简要告诉用户你创建/更新了哪个设计稿，以及它的核心设定、配图与音频。',
+].join('\n')
 }
 
 // ─── Top-Level Mode Agents ────────────────────────────────────────

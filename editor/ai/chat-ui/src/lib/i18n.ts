@@ -80,8 +80,59 @@ const messages = {
   'mode.agent': { en: 'Agent', zh: '代理' },
   'mode.plan': { en: 'Plan', zh: '规划' },
   'mode.design': { en: 'Design', zh: '设计' },
-  'mode.audio': { en: 'Audio', zh: '音频' },
   'mode.image': { en: 'Image', zh: '图像' },
+
+  // ── Mode intros (shown in the hover popup when picking a mode) ──
+  'mode.agent.intro.tagline': {
+    en: 'General-purpose coding agent that edits your Godot project via tools.',
+    zh: '通用编码代理，通过工具直接读写 Godot 项目。',
+  },
+  'mode.agent.intro.caps': {
+    en: 'Read / write / edit / search project files\nRun shell commands when needed\nDelegate sub-tasks to specialized agents',
+    zh: '读取 / 写入 / 编辑 / 搜索项目文件\n需要时运行 shell 命令\n委派子任务给专用代理',
+  },
+  'mode.agent.intro.when': {
+    en: 'For everyday coding tasks — fixing bugs, adding features, refactoring.',
+    zh: '适合日常编码任务——修 bug、加功能、重构代码。',
+  },
+  'mode.plan.intro.tagline': {
+    en: 'Plan & break down work via read-only exploration before execution.',
+    zh: '执行前先做只读探索，规划并拆解任务。',
+  },
+  'mode.plan.intro.caps': {
+    en: 'Inspect the codebase to understand structure\nProduce a plan and hand off via exit plan mode',
+    zh: '浏览代码库了解结构\n产出计划并通过退出规划模式交接',
+  },
+  'mode.plan.intro.when': {
+    en: 'Use at the start of a non-trivial task to scope work and direction.',
+    zh: '在开始非平凡任务时使用，先界定范围与方向。',
+  },
+  'mode.design.intro.tagline': {
+    en: 'Design game content and audio — characters, props, levels, voice and BGM.',
+    zh: '为游戏设计内容与音频——角色、道具、关卡、配音与 BGM。',
+  },
+  'mode.design.intro.caps': {
+    en: 'Markdown design docs for characters / props / levels\nGenerate images via the image model\nDesign / clone voices, synthesize speech and BGM',
+    zh: '用 Markdown 设计稿记录角色 / 道具 / 关卡\n通过图像模型生成配图\n设计 / 克隆音色、合成台词与背景音乐',
+  },
+  'mode.design.intro.when': {
+    en: 'For content creation & sound design — no code is written.',
+    zh: '用于内容创作与声音设计，不写代码。',
+  },
+  'mode.image.intro.tagline': {
+    en: 'Generate images directly from prompts — no chat model required.',
+    zh: '直接根据提示生成图像——无需对话模型。',
+  },
+  'mode.image.intro.caps': {
+    en: 'Text-to-image generation\nBrowse and manage generated assets',
+    zh: '文本生成图像\n浏览与管理生成的资源',
+  },
+  'mode.image.intro.when': {
+    en: 'Use when you only need to produce pictures.',
+    zh: '只需出图时使用。',
+  },
+  'mode.intro.whenLabel': { en: 'When', zh: '何时使用' },
+  'mode.intro.capLabel': { en: 'Capabilities', zh: '能力' },
 
   // ── Model type labels ──
   'type.chat': { en: 'Chat', zh: '对话' },

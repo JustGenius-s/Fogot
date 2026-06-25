@@ -397,9 +397,10 @@ export function setAgentId(id: string) {
     autoSelectChatModel()
     chatModelListeners.forEach((fn) => fn())
   }
-  // Audio mode is an LLM-driven agent (chat model) that calls audio tools,
-  // which in turn use the configured audio model.
-  if (id === 'audio') {
+  // Design mode is an LLM-driven agent (chat model) with audio tools
+  // (design_voice, clone_voice, generate_speech, generate_music) which use the
+  // configured audio model. Make sure one is selected so the tools resolve it.
+  if (id === 'design') {
     autoSelectAudioModel()
     audioModelListeners.forEach((fn) => fn())
   }

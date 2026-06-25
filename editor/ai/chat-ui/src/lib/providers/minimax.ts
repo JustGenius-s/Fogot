@@ -16,9 +16,7 @@ import {
   type ImageProvider,
 } from '@/lib/image-gen'
 
-/** In dev mode the Vite proxy avoids CORS; in production the webview relaxes CORS. */
 function apiBase(model: ModelConfig): string {
-  if (import.meta.env.DEV) return '/api/minimax'
   return model.apiEndpoint.trim().replace(/\/+$/, '')
 }
 

@@ -16,7 +16,7 @@ import { AssetMode } from '@/components/assets/asset-mode'
 import { DesignMode } from '@/components/assets/design-mode'
 import { AudioMode } from '@/components/assets/audio-mode'
 import { allTools, getToolsForAgent } from '@/ai/tools'
-import { getDefaultSystemPrompt, getPlanSystemPrompt, getDesignSystemPrompt, getAudioSystemPrompt, getAgent } from '@/ai/agents'
+import { getDefaultSystemPrompt, getPlanSystemPrompt, getDesignSystemPrompt, getAgent } from '@/ai/agents'
 import { loadDesignTemplate } from '@/lib/designs'
 import { createImageChatTransport } from '@/ai/image-transport'
 import { configureDelegateTool } from '@/ai/tools'
@@ -474,12 +474,12 @@ export default function App() {
 
   const isConfigured = !!(chatModel?.apiKey && chatModel?.apiEndpoint && chatModel?.model)
 
-  // Design / audio modes share an optional project template (res://.design/_template.md).
+  // Design mode loads an optional project template (res://.design/_template.md).
   // When the template changes we re-load so the next agent build picks it up.
   const [designTemplate, setDesignTemplate] = useState<string | undefined>(undefined)
   useEffect(() => {
     let cancelled = false
-    if (agentId === 'design' || agentId === 'audio') {
+    if (agentId === 'design') {
       loadDesignTemplate().then((t) => {
         if (!cancelled) setDesignTemplate(t)
       })
@@ -525,15 +525,9 @@ export default function App() {
     } else if (agentId === 'design') {
       tools = getToolsForAgent([
         'read_file', 'write_design', 'list_files', 'search_files', 'generate_image',
-      ])
-      instructions = getDesignSystemPrompt(designTemplate)
-      maxSteps = 25
-    } else if (agentId === 'audio') {
-      tools = getToolsForAgent([
-        'read_file', 'write_design', 'list_files', 'search_files',
         'design_voice', 'clone_voice', 'generate_speech', 'generate_music', 'list_voices',
       ])
-      instructions = getAudioSystemPrompt(designTemplate)
+      instructions = getDesignSystemPrompt(designTemplate)
       maxSteps = 30
     } else if (agentConfig?.allowedTools) {
       tools = getToolsForAgent(agentConfig.allowedTools)
