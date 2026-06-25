@@ -1,9 +1,3 @@
-/**
- * Audio tool UI cards — render the audio-mode tools (design_voice,
- * clone_voice, generate_speech, generate_music) as compact cards with an
- * inline player for the generated audio.
- */
-
 import { makeAssistantToolUI } from '@assistant-ui/react'
 import {
   LoaderIcon,
@@ -11,11 +5,14 @@ import {
   CopyIcon,
   AudioLinesIcon,
   MusicIcon,
-  AlertCircleIcon,
+  ChevronDownIcon,
   type LucideIcon,
 } from 'lucide-react'
+import { useState } from 'react'
 import { AudioPlayer } from '@/components/assets/audio-player'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { setAppView } from '@/bridge'
+import { cn } from '@/lib/utils'
 import { useTranslation } from '@/lib/i18n'
 
 interface ToolResult {
@@ -37,68 +34,125 @@ function parseResult(result: unknown): ToolResult | null {
   }
 }
 
+interface DetailItem {
+  label?: string
+  value: string
+  mono?: boolean
+  copyable?: boolean
+}
+
+function DetailRow({ label, value, mono, copyable }: DetailItem) {
+  const handleCopy = () => navigator.clipboard?.writeText(value).catch(() => {})
+  const content = (
+    <span
+      className={cn(
+        'text-xs',
+        mono ? 'font-mono text-[10px] text-muted-foreground/80' : 'text-muted-foreground',
+      )}
+    >
+      {value}
+    </span>
+  )
+
+  const inner = (
+    <div className="flex items-baseline gap-1.5">
+      {label && (
+        <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
+          {label}
+        </span>
+      )}
+      {content}
+      {copyable && (
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="shrink-0 text-muted-foreground/40 transition-colors hover:text-foreground"
+        >
+          <CopyIcon className="size-2.5" />
+        </button>
+      )}
+    </div>
+  )
+
+  if (copyable && !mono) return inner
+  return inner
+}
+
 const CardShell = ({
   icon: Icon,
   label,
   title,
   running,
-  children,
-  audioPath,
   error,
-  showVoiceLibrary,
+  details,
+  voiceLibrary,
+  audioPath,
 }: {
   icon: LucideIcon
   label: string
   title?: string
   running: boolean
-  children?: React.ReactNode
-  audioPath?: string
   error?: string
-  showVoiceLibrary?: boolean
+  details?: DetailItem[]
+  voiceLibrary?: boolean
+  audioPath?: string
 }) => {
   const { t } = useTranslation()
-  return (
-  <div className="flex flex-col gap-1 py-0.5">
-    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      {running ? (
-        <LoaderIcon className="size-3.5 shrink-0 animate-spin" />
-      ) : error ? (
-        <AlertCircleIcon className="size-3.5 shrink-0 text-destructive" />
-      ) : (
-        <Icon className="size-3.5 shrink-0" />
-      )}
-      <span className="shrink-0">{label}</span>
-      {title && <span className="truncate">{title}</span>}
-      {error && <span className="text-xs text-destructive">{error}</span>}
-      {showVoiceLibrary && !running && (
-        <button
-          type="button"
-          onClick={() => setAppView('audio')}
-          className="shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:bg-accent hover:text-foreground transition-colors"
-        >
-          <AudioLinesIcon className="size-3" />
-        </button>
-      )}
-    </div>
-    {children && <div className="pl-5 flex flex-col gap-1">{children}</div>}
-    {audioPath && <div className="pl-5"><AudioPlayer path={audioPath} /></div>}
-  </div>
-  )
-}
+  const [open, setOpen] = useState(false)
 
-const VoiceIdChip = ({ voiceId }: { voiceId?: string }) => {
-  const { t } = useTranslation()
-  if (!voiceId) return null
+  if (running) {
+    return (
+      <div className="flex items-center gap-2.5 py-1">
+        <LoaderIcon className="size-3.5 shrink-0 animate-spin text-primary/60" />
+        <span className="text-sm font-medium text-foreground/70">{label}</span>
+      </div>
+    )
+  }
+
   return (
-    <button
-      type="button"
-      onClick={() => navigator.clipboard?.writeText(voiceId).catch(() => {})}
-      title={t('audio.copyVoiceId')}
-      className="inline-flex w-fit items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] text-primary transition-colors hover:bg-primary/20"
-    >
-      {voiceId}
-      <CopyIcon className="size-2.5" />
-    </button>
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="group/trigger flex w-full items-center gap-2 py-0.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
+        <span className="relative size-3.5 shrink-0">
+          <Icon className="size-3.5 absolute inset-0 transition-opacity group-hover/trigger:opacity-0" />
+          <ChevronDownIcon
+            className={cn(
+              'size-3.5 absolute inset-0 transition-all opacity-0 group-hover/trigger:opacity-100',
+              !open && '-rotate-90',
+            )}
+          />
+        </span>
+        <span className="shrink-0">{label}</span>
+        {title && (
+          <span className="truncate text-muted-foreground/70">{title}</span>
+        )}
+        {error && (
+          <span className="shrink-0 text-xs text-destructive/80">{error}</span>
+        )}
+      </CollapsibleTrigger>
+
+      <CollapsibleContent>
+        <div className="flex flex-col gap-2 pl-5 mt-1">
+          {audioPath && !error && (
+            <AudioPlayer path={audioPath} />
+          )}
+
+          {details?.map((d, i) => (
+            <DetailRow key={i} {...d} />
+          ))}
+
+          {voiceLibrary && !error && (
+            <button
+              type="button"
+              onClick={() => setAppView('audio')}
+              className="inline-flex w-fit items-center gap-1.5 text-xs text-muted-foreground/60 transition-colors hover:text-foreground"
+            >
+              <AudioLinesIcon className="size-3" />
+              {t('audio.voiceLibrary')}
+            </button>
+          )}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 
@@ -111,6 +165,15 @@ export const DesignVoiceToolUI = makeAssistantToolUI<
     const { t } = useTranslation()
     const running = status?.type === 'running'
     const res = parseResult(result)
+
+    const details: DetailItem[] = []
+    if (args?.description) {
+      details.push({ label: 'Description', value: args.description })
+    }
+    if (res?.voice_id) {
+      details.push({ label: 'Voice ID', value: res.voice_id, mono: true, copyable: true })
+    }
+
     return (
       <CardShell
         icon={MicIcon}
@@ -118,14 +181,10 @@ export const DesignVoiceToolUI = makeAssistantToolUI<
         title={args?.name ?? res?.name}
         running={running}
         error={res?.error}
+        details={details}
+        voiceLibrary={!!res?.success}
         audioPath={res?.preview}
-        showVoiceLibrary={!!res?.success}
-      >
-        {args?.description && (
-          <span className="text-xs text-muted-foreground">{args.description}</span>
-        )}
-        <VoiceIdChip voiceId={res?.voice_id} />
-      </CardShell>
+      />
     )
   },
 })
@@ -139,6 +198,18 @@ export const CloneVoiceToolUI = makeAssistantToolUI<
     const { t } = useTranslation()
     const running = status?.type === 'running'
     const res = parseResult(result)
+
+    const details: DetailItem[] = []
+    if (args?.reference_audio) {
+      details.push({ label: 'Reference', value: args.reference_audio })
+    }
+    if (res?.voice_id) {
+      details.push({ label: 'Voice ID', value: res.voice_id, mono: true, copyable: true })
+    }
+    if (res?.note) {
+      details.push({ label: 'Note', value: res.note })
+    }
+
     return (
       <CardShell
         icon={MicIcon}
@@ -146,17 +217,10 @@ export const CloneVoiceToolUI = makeAssistantToolUI<
         title={args?.name ?? res?.name}
         running={running}
         error={res?.error}
+        details={details}
+        voiceLibrary={!!res?.success}
         audioPath={res?.preview}
-        showVoiceLibrary={!!res?.success}
-      >
-        {args?.reference_audio && (
-          <span className="truncate text-xs text-muted-foreground" title={args.reference_audio}>
-            {t('audio.referenceLabel', { path: args.reference_audio })}
-          </span>
-        )}
-        <VoiceIdChip voiceId={res?.voice_id} />
-        {res?.note && <span className="text-[11px] text-amber-500">{res.note}</span>}
-      </CardShell>
+      />
     )
   },
 })
@@ -170,19 +234,22 @@ export const GenerateSpeechToolUI = makeAssistantToolUI<
     const { t } = useTranslation()
     const running = status?.type === 'running'
     const res = parseResult(result)
+
+    const details: DetailItem[] = []
+    if (res?.voice_id || args?.voice_id) {
+      details.push({ label: 'Voice', value: args?.voice_id ?? res?.voice_id ?? '', mono: true, copyable: true })
+    }
+
     return (
       <CardShell
         icon={AudioLinesIcon}
         label={t('audio.toolSpeech')}
+        title={args?.text ? `"${args.text}"` : undefined}
         running={running}
         error={res?.error}
+        details={details}
         audioPath={res?.path}
-      >
-        {args?.text && (
-          <span className="text-xs text-foreground/80">“{args.text}”</span>
-        )}
-        <VoiceIdChip voiceId={args?.voice_id ?? res?.voice_id} />
-      </CardShell>
+      />
     )
   },
 })
@@ -196,18 +263,24 @@ export const GenerateMusicToolUI = makeAssistantToolUI<
     const { t } = useTranslation()
     const running = status?.type === 'running'
     const res = parseResult(result)
+
+    const details: DetailItem[] = []
+    if (args?.prompt) {
+      details.push({ label: 'Prompt', value: args.prompt })
+    }
+    if (args?.instrumental !== undefined) {
+      details.push({ label: 'Instrumental', value: args.instrumental ? 'Yes' : 'No' })
+    }
+
     return (
       <CardShell
         icon={MusicIcon}
         label={t('audio.toolMusic')}
         running={running}
         error={res?.error}
+        details={details}
         audioPath={res?.path}
-      >
-        {args?.prompt && (
-          <span className="text-xs text-muted-foreground">{args.prompt}</span>
-        )}
-      </CardShell>
+      />
     )
   },
 })

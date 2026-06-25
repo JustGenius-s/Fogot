@@ -13,6 +13,7 @@ import { AudioModelSelector } from '@/components/assistant-ui/model-selector'
 import { Skeleton } from '@/components/ui/skeleton'
 import { AudioPlayer } from '@/components/assets/audio-player'
 import { listVoices, removeVoice, type VoiceEntry } from '@/lib/voices'
+import { cn } from '@/lib/utils'
 import { useTranslation } from '@/lib/i18n'
 
 /** Display label for a backend provider id. */
@@ -130,15 +131,25 @@ const VoiceCard: FC<{ voice: VoiceEntry; onDelete: (id: string) => void }> = ({
 }) => {
   const { t } = useTranslation()
   return (
-  <div className="flex flex-col gap-2 overflow-hidden rounded-lg border border-border/60 bg-card p-3">
-    <div className="flex items-center gap-2">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-md border border-border/50 bg-muted">
-        <MicIcon className="size-4 text-muted-foreground/60" />
+  <div
+    data-slot="voice-card"
+    className="group flex flex-col gap-3 overflow-hidden rounded-lg border border-border/50 bg-card/80 p-3.5 transition-colors hover:border-border"
+  >
+    <div className="flex items-start gap-3">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-primary/10">
+        <MicIcon className="size-4.5 text-primary/70" />
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <div className="flex items-baseline gap-2">
-          <span className="truncate text-sm font-medium">{voice.name}</span>
-          <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-sm font-semibold text-foreground">{voice.name}</span>
+          <span
+            className={cn(
+              'shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium',
+              voice.kind === 'clone'
+                ? 'bg-amber-500/10 text-amber-500'
+                : 'bg-primary/10 text-primary',
+            )}
+          >
             {voice.kind === 'clone' ? t('audio.kindClone') : t('audio.kindDesign')}
           </span>
         </div>
@@ -146,7 +157,7 @@ const VoiceCard: FC<{ voice: VoiceEntry; onDelete: (id: string) => void }> = ({
           type="button"
           onClick={() => navigator.clipboard?.writeText(voice.voiceId).catch(() => {})}
           title={t('audio.copyVoiceId')}
-          className="flex w-fit items-center gap-1 truncate font-mono text-[10px] text-muted-foreground transition-colors hover:text-foreground"
+          className="flex w-fit items-center gap-1 truncate rounded bg-muted/80 px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           {voice.voiceId}
           <CopyIcon className="size-2.5 shrink-0" />
@@ -155,7 +166,7 @@ const VoiceCard: FC<{ voice: VoiceEntry; onDelete: (id: string) => void }> = ({
       <TooltipIconButton
         tooltip={t('common.delete')}
         side="bottom"
-        className="size-7"
+        className="size-7 opacity-0 transition-opacity group-hover:opacity-100"
         onClick={() => onDelete(voice.voiceId)}
       >
         <Trash2Icon className="size-3.5" />
@@ -163,9 +174,13 @@ const VoiceCard: FC<{ voice: VoiceEntry; onDelete: (id: string) => void }> = ({
     </div>
 
     {voice.description && (
-      <span className="text-xs text-muted-foreground">{voice.description}</span>
+      <p className="text-xs leading-relaxed text-muted-foreground/80">{voice.description}</p>
     )}
-    {voice.preview && <AudioPlayer path={voice.preview} label={t('audio.preview')} />}
+    {voice.preview && (
+      <div className="-mx-0.5">
+        <AudioPlayer path={voice.preview} label={t('audio.preview')} />
+      </div>
+    )}
   </div>
   )
 }

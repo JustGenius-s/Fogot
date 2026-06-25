@@ -14,7 +14,6 @@ interface AudioPlayerProps {
   className?: string
 }
 
-/** Format seconds as `m:ss` (e.g. 75 → "1:15"). */
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
   const total = Math.floor(seconds)
@@ -23,11 +22,6 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-/**
- * Compact inline audio player for a project audio asset. Reads the file as a
- * data URL on first play (binary bridge reads are relatively expensive) and
- * shows a seekable progress bar with elapsed / total time.
- */
 export const AudioPlayer: FC<AudioPlayerProps> = ({ path, label, version, className }) => {
   const { t } = useTranslation()
   const audioRef = useRef<HTMLAudioElement>(null)
@@ -38,6 +32,7 @@ export const AudioPlayer: FC<AudioPlayerProps> = ({ path, label, version, classN
   const [failed, setFailed] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [buffered, setBuffered] = useState(0)
   const [seeking, setSeeking] = useState(false)
 
   useEffect(() => {
@@ -46,6 +41,7 @@ export const AudioPlayer: FC<AudioPlayerProps> = ({ path, label, version, classN
     setFailed(false)
     setCurrentTime(0)
     setDuration(0)
+    setBuffered(0)
   }, [path, version])
 
   const ensureLoaded = useCallback(async (): Promise<string | null> => {
@@ -72,13 +68,11 @@ export const AudioPlayer: FC<AudioPlayerProps> = ({ path, label, version, classN
     }
     const url = await ensureLoaded()
     if (!url) return
-    // Wait a tick so the <audio> element binds the freshly-set src.
     requestAnimationFrame(() => {
       audioRef.current?.play().catch(() => setFailed(true))
     })
   }, [playing, ensureLoaded])
 
-  // Translate a pointer x-position on the track into a 0..1 ratio.
   const ratioFromPointer = useCallback((clientX: number): number => {
     const el = trackRef.current
     if (!el) return 0
@@ -97,7 +91,6 @@ export const AudioPlayer: FC<AudioPlayerProps> = ({ path, label, version, classN
         el.currentTime = ratio * el.duration
         setCurrentTime(el.currentTime)
       }
-      // If metadata isn't ready yet, apply once it loads.
       if (audioRef.current && Number.isFinite(audioRef.current.duration)) apply()
       else requestAnimationFrame(apply)
     },
@@ -126,67 +119,93 @@ export const AudioPlayer: FC<AudioPlayerProps> = ({ path, label, version, classN
     setSeeking(false)
   }, [])
 
-  const progress = duration > 0 ? Math.min(1, currentTime / duration) : 0
+  const safeDuration = duration > 0 ? duration : 1
+  const progress = Math.min(1, currentTime / safeDuration)
+  const bufferedProgress = Math.min(1, buffered / safeDuration)
   const fileName = path.split('/').pop() ?? path
 
   return (
     <div
+      data-slot="audio-player"
       className={cn(
-        'flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2 py-1.5',
+        'relative w-full overflow-hidden rounded-2xl bg-card/60 px-4 py-3 shadow-sm ring-1 ring-border/50',
+        'transition-shadow hover:shadow-md hover:ring-border',
         className,
       )}
     >
-      <button
-        type="button"
-        onClick={toggle}
-        disabled={failed}
-        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/20 disabled:opacity-40"
-        aria-label={playing ? t('common.pause') : t('common.play')}
-      >
-        {failed ? (
-          <AlertCircleIcon className="size-3.5 text-destructive" />
-        ) : loading ? (
-          <AudioLinesIcon className="size-3.5 animate-pulse" />
-        ) : playing ? (
-          <PauseIcon className="size-3.5" />
-        ) : (
-          <PlayIcon className="size-3.5" />
-        )}
-      </button>
-
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <span className="truncate text-xs text-muted-foreground" title={path}>
-          {label ?? fileName}
-        </span>
-        <div
-          ref={trackRef}
-          role="slider"
-          aria-label={label ?? fileName}
-          aria-valuemin={0}
-          aria-valuemax={Math.floor(duration)}
-          aria-valuenow={Math.floor(currentTime)}
-          tabIndex={0}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          className="group relative h-2 cursor-pointer touch-none"
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={toggle}
+          disabled={failed}
+          className={cn(
+            'flex size-9 shrink-0 items-center justify-center rounded-full transition-all',
+            failed
+              ? 'bg-destructive/15 text-destructive'
+              : 'bg-white/10 text-foreground hover:bg-white/20 active:scale-90',
+            'disabled:opacity-30',
+          )}
+          aria-label={playing ? t('common.pause') : t('common.play')}
         >
-          <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 overflow-hidden rounded-full bg-border">
+          {failed ? (
+            <AlertCircleIcon className="size-4.5" />
+          ) : loading ? (
+            <AudioLinesIcon className="size-4.5 animate-pulse" />
+          ) : playing ? (
+            <PauseIcon className="size-4.5" fill="currentColor" />
+          ) : (
+            <PlayIcon className="size-4.5" fill="currentColor" />
+          )}
+        </button>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+          <div className="flex items-center justify-between gap-2">
+            <span className="truncate text-xs font-medium text-foreground/70" title={path}>
+              {label ?? fileName}
+            </span>
+            <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted-foreground/50">
+              {formatTime(currentTime)}
+              <span className="mx-0.5 text-muted-foreground/25">/</span>
+              {formatTime(duration)}
+            </span>
+          </div>
+
+          <div
+            ref={trackRef}
+            role="slider"
+            aria-label={label ?? fileName}
+            aria-valuemin={0}
+            aria-valuemax={Math.floor(duration)}
+            aria-valuenow={Math.floor(currentTime)}
+            tabIndex={0}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            className="group relative h-4 cursor-pointer touch-none select-none"
+          >
+            <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 overflow-hidden rounded-full bg-muted">
+              <div
+                data-slot="audio-player-buffered"
+                className="absolute inset-y-0 left-0 rounded-full bg-muted-foreground/25"
+                style={{ width: `${bufferedProgress * 100}%` }}
+              />
+              <div
+                data-slot="audio-player-progress"
+                className="absolute inset-y-0 left-0 rounded-full bg-primary transition-[width] duration-100 ease-linear"
+                style={{ width: `${progress * 100}%` }}
+              />
+            </div>
             <div
-              className="h-full rounded-full bg-primary"
-              style={{ width: `${progress * 100}%` }}
+              data-slot="audio-player-thumb"
+              className={cn(
+                'absolute top-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow',
+                'opacity-0 transition-all group-hover:opacity-100 group-hover:scale-110',
+              )}
+              style={{ left: `${progress * 100}%` }}
             />
           </div>
-          <div
-            className="absolute top-1/2 size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary opacity-0 shadow-sm transition-opacity group-hover:opacity-100"
-            style={{ left: `${progress * 100}%` }}
-          />
         </div>
       </div>
-
-      <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground/70">
-        {formatTime(currentTime)} / {formatTime(duration)}
-      </span>
 
       {src && (
         <audio
@@ -204,6 +223,16 @@ export const AudioPlayer: FC<AudioPlayerProps> = ({ path, label, version, classN
           onDurationChange={(e) => setDuration(e.currentTarget.duration || 0)}
           onTimeUpdate={(e) => {
             if (!seeking) setCurrentTime(e.currentTarget.currentTime)
+            const el = e.currentTarget
+            if (el.buffered.length > 0) {
+              setBuffered(el.buffered.end(el.buffered.length - 1))
+            }
+          }}
+          onProgress={() => {
+            const el = audioRef.current
+            if (el && el.buffered.length > 0) {
+              setBuffered(el.buffered.end(el.buffered.length - 1))
+            }
           }}
           className="hidden"
         />
