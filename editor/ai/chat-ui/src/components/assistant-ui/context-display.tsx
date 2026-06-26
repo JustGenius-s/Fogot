@@ -10,6 +10,8 @@ import {
 import { cn } from "@/lib/utils";
 import { createContext, useContext, useMemo, type FC } from "react";
 import { getSelectedChatModel } from "@/bridge";
+import { resolveModelLimits } from "@/lib/model-capabilities";
+import { usableContext, tokenCount } from "@/ai/context-budget";
 import { useUsageSnapshot } from "@/ai/context-manager";
 
 const formatTokenCount = (tokens: number): string => {
@@ -43,7 +45,7 @@ const getStrokeColor = (percent: number): string => {
 
 type ContextDisplayContextValue = {
   usage: ThreadTokenUsage | undefined;
-  totalTokens: number;
+  contextTokens: number;
   percent: number;
   modelContextWindow: number;
 };
@@ -69,7 +71,7 @@ function ContextDisplayPopoverContent({
   side?: "top" | "bottom" | "left" | "right";
   className?: string;
 }) {
-  const { usage, totalTokens, percent, modelContextWindow } =
+  const { usage, contextTokens, percent, modelContextWindow } =
     useContextDisplay();
 
   return (
@@ -129,9 +131,9 @@ function ContextDisplayPopoverContent({
 
         <div className="mt-0.5 border-t pt-1.5">
           <div className="flex items-center justify-between gap-4">
-            <span className="text-muted-foreground">Total</span>
+            <span className="text-muted-foreground">Context</span>
             <span className="font-mono tabular-nums">
-              {formatTokenCount(totalTokens)} /{" "}
+              {formatTokenCount(contextTokens)} /{" "}
               {formatTokenCount(modelContextWindow)}
             </span>
           </div>
@@ -156,15 +158,23 @@ export const ContextDisplayRing: FC<{
     ? { inputTokens: snapshot.inputTokens, outputTokens: snapshot.outputTokens, totalTokens: snapshot.totalTokens }
     : undefined;
 
-  const contextWindow =
-    mwProp ?? getSelectedChatModel()?.contextWindow ?? 1_000_000;
+  const model = getSelectedChatModel();
+  const limits = model ? resolveModelLimits(model) : null;
+  const usable =
+    mwProp ?? (limits ? usableContext(limits) : 1_000_000);
 
-  const totalTokens = usage?.totalTokens ?? 0;
-  const percent = getUsagePercent(totalTokens, contextWindow);
+  // Match opencode overflow.ts: compare total token count against usable budget.
+  const contextTokens = snapshot ? tokenCount(snapshot) : 0;
+  const percent = getUsagePercent(contextTokens, usable);
 
   const contextValue = useMemo(
-    () => ({ usage, totalTokens, percent, modelContextWindow: contextWindow }),
-    [usage, totalTokens, percent, contextWindow],
+    () => ({
+      usage,
+      contextTokens,
+      percent,
+      modelContextWindow: usable,
+    }),
+    [usage, contextTokens, percent, usable],
   );
 
   return (

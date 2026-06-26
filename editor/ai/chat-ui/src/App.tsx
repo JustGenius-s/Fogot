@@ -27,6 +27,8 @@ import {
   getLastUsage,
   setCurrentThreadId,
 } from '@/ai/context-manager'
+import { compactIfNeeded } from '@/ai/compaction'
+import type { ModelConfig } from '@/bridge'
 import { extractMentions, resolveMentionContext } from '@/ai/mentions'
 import { DEFAULT_MODE_ID } from '@/components/assistant-ui/mode-selector'
 import { threadListAdapter } from '@/lib/thread-storage'
@@ -56,92 +58,12 @@ import { getBuiltinSkills, loadProjectSkills } from '@/ai/skills'
 import { setAvailableSkills, clearInvokedSkills } from '@/bridge'
 import { useTranslation } from '@/lib/i18n'
 
-// ─── Transport Wrapper (attachments + context compression) ────────
+// ─── Transport Wrapper (attachments + context compaction) ────────
 
 const MEDIA_TYPES: Record<string, string> = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
   webp: 'image/webp', gif: 'image/gif', bmp: 'image/bmp',
   svg: 'image/svg+xml',
-}
-
-/**
- * Rough token estimation: ~4 chars per token for English/code,
- * ~2 chars per token for CJK text. Uses a weighted average.
- */
-function estimateTokens(text: string): number {
-  let cjkChars = 0
-  for (const ch of text) {
-    if (ch.charCodeAt(0) > 0x2E80) cjkChars++
-  }
-  const latinChars = text.length - cjkChars
-  return Math.ceil(latinChars / 4 + cjkChars / 1.5)
-}
-
-function estimateMessagesTokens(messages: any[]): number {
-  let total = 0
-  for (const msg of messages) {
-    const parts = msg.parts ?? msg.content ?? []
-    for (const p of parts) {
-      if (p.type === 'text' && p.text) {
-        total += estimateTokens(p.text)
-      }
-    }
-    total += 4 // message overhead
-  }
-  return total
-}
-
-async function summarizeMessages(
-  messages: any[],
-  modelConfig: { apiEndpoint: string; apiKey: string; model: string },
-): Promise<string> {
-  const conversationText = messages
-    .map((m: any) => {
-      const role = m.role ?? 'unknown'
-      const textParts = (m.parts ?? m.content ?? [])
-        .filter((p: any) => p.type === 'text')
-        .map((p: any) => p.text ?? '')
-        .join('\n')
-      return `[${role}]: ${textParts.slice(0, 2000)}`
-    })
-    .join('\n\n')
-
-  const endpoint = modelConfig.apiEndpoint.replace(/\/$/, '')
-  const response = await fetch(`${endpoint}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${modelConfig.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: modelConfig.model,
-      messages: [
-        {
-          role: 'system',
-          content: `You are a conversation summarizer. Create a concise but comprehensive summary that preserves:
-- Key decisions and conclusions
-- Important context (file paths, variable names, technical details)
-- Ongoing tasks and their current status
-- Any unresolved questions
-
-Write in the same language as the conversation. Use bullet points. Keep under 800 words.`,
-        },
-        {
-          role: 'user',
-          content: `Summarize this conversation:\n\n${conversationText}`,
-        },
-      ],
-      max_tokens: 2048,
-      temperature: 0.3,
-    }),
-  })
-
-  if (!response.ok) {
-    throw new Error(`Summarization failed: ${response.status}`)
-  }
-
-  const data = await response.json()
-  return data.choices?.[0]?.message?.content ?? ''
 }
 
 /**
@@ -169,23 +91,19 @@ function stripImageParts(msg: any): any {
 
 function wrapTransport(
   inner: DirectChatTransport,
-  modelConfig: { apiEndpoint: string; apiKey: string; model: string; contextWindow?: number; supportsVision?: boolean },
+  chatModel: ModelConfig,
+  options: { supportsVision?: boolean },
 ): DirectChatTransport {
   const origSend = inner.sendMessages.bind(inner)
-  const contextWindow = modelConfig.contextWindow ?? 1_000_000
-  const COMPRESS_THRESHOLD = 0.75
-  const KEEP_RECENT_PAIRS = 4
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   inner.sendMessages = async (args: any) => {
     let msgs = [...args.messages]
 
     // --- Strip images for text-only models ---
-    if (modelConfig.supportsVision === false) {
+    if (options.supportsVision === false) {
       msgs = msgs.map(stripImageParts)
     }
-
-    const msgsForEstimation = msgs
 
     // --- Inject attachments ---
     const attachments = getAttachments()
@@ -225,75 +143,16 @@ function wrapTransport(
       }
     }
 
-    // --- Context compression ---
-    const estimatedTokens = estimateMessagesTokens(msgs)
-    if (estimatedTokens > contextWindow * COMPRESS_THRESHOLD && msgs.length > KEEP_RECENT_PAIRS * 2 + 1) {
-      try {
-        // Split: find system message, determine what to summarize vs keep
-        let systemMsg: any | null = null
-        let conversation = msgs
-        if (conversation[0]?.role === 'system') {
-          systemMsg = conversation[0]
-          conversation = conversation.slice(1)
-        }
-
-        const keepCount = KEEP_RECENT_PAIRS * 2
-        const toSummarize = conversation.slice(0, conversation.length - keepCount)
-        const toKeep = conversation.slice(conversation.length - keepCount)
-
-        if (toSummarize.length > 2) {
-          const summary = await summarizeMessages(toSummarize, modelConfig)
-          if (summary) {
-            msgs = []
-            if (systemMsg) msgs.push(systemMsg)
-            msgs.push({
-              role: 'user',
-              parts: [{ type: 'text', text: `[Earlier conversation summary]\n\n${summary}` }],
-            })
-            msgs.push({
-              role: 'assistant',
-              parts: [{ type: 'text', text: 'Understood. I have the context from our earlier conversation. Let me continue helping you.' }],
-            })
-            msgs.push(...toKeep)
-
-            updateUsageSnapshot({
-              inputTokens: estimateMessagesTokens(msgs),
-              outputTokens: 0,
-              totalTokens: estimateMessagesTokens(msgs),
-            })
-          }
-        }
-      } catch (e) {
-        console.warn('Context compression failed, sending full messages:', e)
-      }
+    // --- Context compaction (opencode-style: prune → summarize on overflow) ---
+    try {
+      msgs = await compactIfNeeded(msgs, chatModel, getLastUsage())
+    } catch (e) {
+      console.warn('Context compaction failed, sending full messages:', e)
     }
 
     args = { ...args, messages: msgs }
 
-    const stream = await origSend(args)
-
-    // Fallback: if API didn't report usage, estimate from messages after stream ends
-    const usageBefore = getLastUsage()
-    const inputEstimate = estimateMessagesTokens(msgsForEstimation)
-
-    const [passThrough, monitor] = stream.tee()
-    const reader = monitor.getReader()
-    ;(async () => {
-      try {
-        while (true) {
-          const { done } = await reader.read()
-          if (done) break
-        }
-      } catch { /* stream error, ignore */ }
-      // Wait for messageMetadata callbacks to fire
-      await new Promise(r => setTimeout(r, 300))
-      const usageAfter = getLastUsage()
-      if (!usageAfter || usageAfter === usageBefore) {
-        updateUsageSnapshot({ inputTokens: inputEstimate, outputTokens: 0, totalTokens: inputEstimate })
-      }
-    })()
-
-    return passThrough
+    return origSend(args)
   }
 
   return inner
@@ -602,41 +461,64 @@ export default function App() {
       agent,
       sendReasoning: true,
       messageMetadata: (() => {
-        let usageReported = false
+        // Context-window occupancy is the size of the prompt sent to the model,
+        // i.e. the LAST step's inputTokens (which grows as the conversation does).
+        // `finish.totalUsage` SUMS inputTokens across every tool-loop step, so it
+        // over-counts wildly on multi-step turns and jumps around between turns.
+        // We therefore track the max inputTokens seen across steps instead.
+        let maxInputTokens = 0
+        let totalOutputTokens = 0
+        let reasoningTokens: number | undefined
+        let cachedInputTokens: number | undefined
+
+        const report = () => {
+          if (maxInputTokens > 0 || totalOutputTokens > 0) {
+            updateUsageSnapshot({
+              inputTokens: maxInputTokens,
+              outputTokens: totalOutputTokens,
+              totalTokens: maxInputTokens + totalOutputTokens,
+              cachedInputTokens,
+              reasoningTokens,
+            })
+          }
+        }
+
         return ({ part }: { part: any }) => {
           if (part.type === 'finish-step') {
             const u = part.usage
-            if (u && (u.inputTokens || u.outputTokens || u.totalTokens)) {
+            if (u) {
               const input = u.inputTokens ?? 0
-              const output = u.outputTokens ?? 0
-              const total = u.totalTokens ?? (input + output)
-              updateUsageSnapshot({ inputTokens: input, outputTokens: output, totalTokens: total })
-              usageReported = true
+              if (input > maxInputTokens) maxInputTokens = input
+              totalOutputTokens += u.outputTokens ?? 0
+              const r = u.outputTokenDetails?.reasoningTokens ?? u.reasoningTokens
+              if (r != null) reasoningTokens = (reasoningTokens ?? 0) + r
+              const c = u.inputTokenDetails?.cacheReadTokens ?? u.cachedInputTokens
+              if (c != null && c > (cachedInputTokens ?? 0)) cachedInputTokens = c
+              report()
             }
             if (part.response?.modelId) {
               return { modelId: part.response.modelId }
             }
           }
           if (part.type === 'finish') {
-            const u = part.totalUsage
-            if (u && (u.inputTokens || u.outputTokens || u.totalTokens)) {
-              const input = u.inputTokens ?? 0
-              const output = u.outputTokens ?? 0
-              const total = u.totalTokens ?? (input + output)
-              updateUsageSnapshot({ inputTokens: input, outputTokens: output, totalTokens: total })
-              usageReported = true
-              return { usage: { inputTokens: input, outputTokens: output, totalTokens: total, reasoningTokens: u.outputTokenDetails?.reasoningTokens ?? u.reasoningTokens, cachedInputTokens: u.inputTokenDetails?.cacheReadTokens ?? u.cachedInputTokens } }
+            report()
+            if (maxInputTokens > 0 || totalOutputTokens > 0) {
+              return {
+                usage: {
+                  inputTokens: maxInputTokens,
+                  outputTokens: totalOutputTokens,
+                  totalTokens: maxInputTokens + totalOutputTokens,
+                  reasoningTokens,
+                  cachedInputTokens,
+                },
+              }
             }
           }
           return undefined
         }
       })(),
     } as any)
-    return wrapTransport(inner, {
-      apiEndpoint: chatModel.apiEndpoint,
-      apiKey: chatModel.apiKey,
-      model: chatModel.model,
-      contextWindow: limits.contextWindow,
+    return wrapTransport(inner, chatModel, {
       supportsVision: caps.vision,
     })
   }, [chatModelId, agentId, isConfigured, chatModel, designTemplate])
