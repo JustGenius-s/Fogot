@@ -261,6 +261,13 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 	bool is_error = false;
 
 	if (p_tool_name == "read_file") {
+		bool binary = args.get("binary", false);
+		if (binary) {
+			WorkerThreadPool::get_singleton()->add_task(
+				callable_mp(this, &AIChatDock::_read_file_async).bind(args, p_request_id),
+				false, "AI read_file binary");
+			return;
+		}
 		result = AIToolRPC::read_file(args);
 	} else if (p_tool_name == "write_file") {
 		result = AIToolRPC::write_file(args);
@@ -320,7 +327,10 @@ void AIChatDock::_handle_call_tool(const String &p_request_id, const String &p_t
 	} else if (p_tool_name == "scene_open") {
 		result = AIToolRPC::scene_open(args);
 	} else if (p_tool_name == "read_image") {
-		result = AIToolRPC::read_image(args);
+		WorkerThreadPool::get_singleton()->add_task(
+			callable_mp(this, &AIChatDock::_read_image_async).bind(args, p_request_id),
+			false, "AI read_image");
+		return;
 	} else if (p_tool_name == "scene_get_skeleton2d_data") {
 		result = AIToolRPC::scene_get_skeleton2d_data(args);
 	} else if (p_tool_name == "scene_set_bone2d_rest") {
@@ -378,6 +388,27 @@ void AIChatDock::_flush_debugger_errors() {
 	pending_debugger_errors.clear();
 
 	_js_call("onDebuggerErrors", { "'" + _js_escape(json_array) + "'" });
+}
+
+// ─── Async file reading (binary/image) ───────────────────────────────
+
+void AIChatDock::_read_file_async(const Dictionary &p_args, const String &p_request_id) {
+	String result = AIToolRPC::read_file(p_args);
+	callable_mp(this, &AIChatDock::_on_async_tool_result).bind(p_request_id, result).call_deferred();
+}
+
+void AIChatDock::_read_image_async(const Dictionary &p_args, const String &p_request_id) {
+	String result = AIToolRPC::read_image(p_args);
+	callable_mp(this, &AIChatDock::_on_async_tool_result).bind(p_request_id, result).call_deferred();
+}
+
+void AIChatDock::_on_async_tool_result(const String &p_request_id, const String &p_result) {
+	bool is_error = p_result.begins_with("Error:");
+	_js_call("onToolResult", {
+			"'" + _js_escape(p_request_id) + "'",
+			"'" + _js_escape(p_result) + "'",
+			is_error ? "true" : "false",
+	});
 }
 
 // ─── Async command execution (streaming + kill) ──────────────────────

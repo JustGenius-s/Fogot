@@ -285,6 +285,7 @@ const messages = {
   'assets.openInEditor': { en: 'Open in Editor', zh: '在编辑器中打开' },
   'assets.selectAsset': { en: 'Select asset', zh: '选择资源' },
   'assets.chooseFromAssets': { en: 'Choose from assets', zh: '从资源中选择' },
+  'assets.search': { en: 'Search assets…', zh: '搜索资源…' },
   'assets.saveToAssets': { en: 'Save to assets', zh: '保存到资源库' },
   'assets.saveFailed': { en: 'Save failed, retry', zh: '保存失败，重试' },
   'assets.savedTo': { en: 'Saved to {path}', zh: '已保存到 {path}' },

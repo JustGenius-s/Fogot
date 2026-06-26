@@ -50,6 +50,11 @@ class AIChatDock : public EditorDock {
 	// ─── Tool RPC ───────────────────────────────────────────────
 	void _handle_call_tool(const String &p_request_id, const String &p_tool_name, const String &p_args_json);
 
+	// ─── Async file reading (binary/image) ──────────────────────
+	void _read_file_async(const Dictionary &p_args, const String &p_request_id);
+	void _read_image_async(const Dictionary &p_args, const String &p_request_id);
+	void _on_async_tool_result(const String &p_request_id, const String &p_result);
+
 	// ─── Async command execution (streaming + kill) ─────────────
 	struct RunningCommand {
 		ProcessID pid = 0;
