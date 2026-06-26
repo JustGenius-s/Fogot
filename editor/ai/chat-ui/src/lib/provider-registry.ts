@@ -13,6 +13,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { createOpenAI } from '@ai-sdk/openai'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { devProxiedFetch } from '@/lib/dev-proxy'
 
 export interface ChatModelRequest {
   /** Provider npm from the catalog. Undefined → custom OpenAI-compatible. */
@@ -32,6 +33,7 @@ function openAICompatible(req: ChatModelRequest): LanguageModel {
     name: req.providerId || 'fogot-llm',
     apiKey: req.apiKey,
     baseURL: req.baseURL ?? '',
+    fetch: devProxiedFetch,
     transformRequestBody: req.extraBody
       ? (args) => ({ ...req.extraBody, ...args })
       : undefined,
@@ -47,6 +49,7 @@ const FACTORIES: Record<string, Factory> = {
   '@ai-sdk/openai': (req) => {
     const provider = createOpenAI({
       apiKey: req.apiKey,
+      fetch: devProxiedFetch,
       ...(req.baseURL ? { baseURL: req.baseURL } : {}),
     })
     return provider.languageModel(req.modelId)
@@ -54,6 +57,7 @@ const FACTORIES: Record<string, Factory> = {
   '@ai-sdk/anthropic': (req) => {
     const provider = createAnthropic({
       apiKey: req.apiKey,
+      fetch: devProxiedFetch,
       ...(req.baseURL ? { baseURL: req.baseURL } : {}),
       // Required for direct browser/webview calls to the Anthropic API.
       headers: { 'anthropic-dangerous-direct-browser-access': 'true' },
@@ -63,6 +67,7 @@ const FACTORIES: Record<string, Factory> = {
   '@ai-sdk/google': (req) => {
     const provider = createGoogleGenerativeAI({
       apiKey: req.apiKey,
+      fetch: devProxiedFetch,
       ...(req.baseURL ? { baseURL: req.baseURL } : {}),
     })
     return provider.languageModel(req.modelId)

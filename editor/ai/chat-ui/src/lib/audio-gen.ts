@@ -18,6 +18,7 @@
 
 import { bridgeRPC, getAudioModels, type ModelConfig } from '@/bridge'
 import { getAudioMime, invalidateAsset } from '@/lib/assets'
+import { devProxiedFetch } from '@/lib/dev-proxy'
 
 /** Default speech-synthesis model used when the audio model has none set. */
 const DEFAULT_SPEECH_MODEL = 'speech-2.5-hd-preview'
@@ -166,7 +167,7 @@ async function minimaxDesignVoice(opt: DesignVoiceOptions, model: ModelConfig): 
   }
   if (opt.voiceId) body.voice_id = opt.voiceId
 
-  const resp = await fetch(withGroup(`${base}/v1/voice_design`, model), {
+  const resp = await devProxiedFetch(withGroup(`${base}/v1/voice_design`, model), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders(model) },
     body: JSON.stringify(body),
@@ -201,7 +202,7 @@ async function minimaxSynthesize(opt: SpeechOptions, model: ModelConfig): Promis
     audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'mp3', channel: 1 },
   }
 
-  const resp = await fetch(withGroup(`${base}/v1/t2a_v2`, model), {
+  const resp = await devProxiedFetch(withGroup(`${base}/v1/t2a_v2`, model), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders(model) },
     body: JSON.stringify(body),
@@ -223,7 +224,7 @@ async function minimaxCloneVoice(opt: CloneVoiceOptions, model: ModelConfig): Pr
   form.append('purpose', 'voice_clone')
   form.append('file', base64ToBlob(refB64, getAudioMime(opt.referenceAudio)), fileNameOf(opt.referenceAudio))
 
-  const uploadResp = await fetch(withGroup(`${base}/v1/files/upload`, model), {
+  const uploadResp = await devProxiedFetch(withGroup(`${base}/v1/files/upload`, model), {
     method: 'POST',
     headers: authHeaders(model),
     body: form,
@@ -240,7 +241,7 @@ async function minimaxCloneVoice(opt: CloneVoiceOptions, model: ModelConfig): Pr
     voice_id: opt.voiceId,
     model: opt.speechModel || model.model || DEFAULT_SPEECH_MODEL,
   }
-  const cloneResp = await fetch(withGroup(`${base}/v1/voice_clone`, model), {
+  const cloneResp = await devProxiedFetch(withGroup(`${base}/v1/voice_clone`, model), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders(model) },
     body: JSON.stringify(cloneBody),
@@ -275,7 +276,7 @@ async function minimaxMusic(opt: MusicOptions, model: ModelConfig): Promise<Audi
   if (opt.instrumental) body.is_instrumental = true
   if (opt.lyricsOptimizer) body.lyrics_optimizer = true
 
-  const resp = await fetch(withGroup(`${base}/v1/music_generation`, model), {
+  const resp = await devProxiedFetch(withGroup(`${base}/v1/music_generation`, model), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeaders(model) },
     body: JSON.stringify(body),

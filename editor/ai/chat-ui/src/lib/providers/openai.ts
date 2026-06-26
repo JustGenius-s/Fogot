@@ -18,6 +18,7 @@ import {
   ratioToPixels,
   type ImageProvider,
 } from '@/lib/image-gen'
+import { devProxiedFetch } from '@/lib/dev-proxy'
 
 function resolveOpenAIUrls(endpoint: string): { apiBase: string; apiUrl: string } {
   const trimmed = endpoint.trim().replace(/\/+$/, '')
@@ -42,7 +43,7 @@ async function pollOpenAITask(
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise((r) => setTimeout(r, intervalMs))
     try {
-      const resp = await fetch(taskUrl, { headers: authHeaders(model) })
+      const resp = await devProxiedFetch(taskUrl, { headers: authHeaders(model) })
       const json = await resp.json()
       const data = Array.isArray(json.data) ? json.data[0] : json.data
 
@@ -81,18 +82,12 @@ export class OpenAIProvider implements ImageProvider {
     const { prompt, size, resolution, quality, referenceImage: refOpt } = opts
     const referenceImage = Array.isArray(refOpt) ? refOpt[0] : refOpt
 
-    let endpoint = model.apiEndpoint
-    if (import.meta.env.DEV) {
-      try {
-        const hostname = new URL(endpoint).hostname
-        if (hostname === 'api.ofox.io') endpoint = '/api/ofox/v1'
-      } catch {}
-    }
+    const endpoint = model.apiEndpoint
 
     const { apiBase, apiUrl } = resolveOpenAIUrls(endpoint)
 
     const doRequest = async (body: Record<string, unknown>) => {
-      const resp = await fetch(apiUrl, {
+      const resp = await devProxiedFetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders(model) },
         body: JSON.stringify(body),

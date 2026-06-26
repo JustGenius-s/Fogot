@@ -10,6 +10,7 @@
 
 import { useEffect, useState, type FC, type ReactNode } from "react";
 import { providerLogo } from "@/lib/models-catalog";
+import { devProxiedFetch } from "@/lib/dev-proxy";
 import { cn } from "@/lib/utils";
 
 const cache = new Map<string, Promise<string>>();
@@ -17,7 +18,7 @@ const cache = new Map<string, Promise<string>>();
 function loadLogo(providerId: string): Promise<string> {
   let pending = cache.get(providerId);
   if (!pending) {
-    pending = fetch(providerLogo(providerId))
+    pending = devProxiedFetch(providerLogo(providerId))
       .then((r) => (r.ok ? r.text() : Promise.reject(new Error(String(r.status)))))
       .then((svg) => {
         if (!/<svg[\s>]/i.test(svg)) throw new Error("not an svg");

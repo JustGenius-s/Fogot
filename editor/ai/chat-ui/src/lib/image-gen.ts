@@ -10,6 +10,7 @@
  */
 
 import { bridgeRPC, getImageModels, type ModelConfig } from '@/bridge'
+import { devProxiedFetch } from '@/lib/dev-proxy'
 import { OpenAIProvider } from '@/lib/providers/openai'
 import { MinimaxProvider } from '@/lib/providers/minimax'
 import { ApimartProvider } from '@/lib/providers/apimart'
@@ -127,7 +128,7 @@ export async function downloadImageUrl(
   url: string,
   revisedPrompt?: string,
 ): Promise<ImageModelCall> {
-  const resp = await fetch(url)
+  const resp = await devProxiedFetch(url)
   const blob = await resp.blob()
   const b64 = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader()

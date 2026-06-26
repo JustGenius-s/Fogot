@@ -21,6 +21,7 @@ import {
   base64ToBlob,
   type ImageProvider,
 } from '@/lib/image-gen'
+import { devProxiedFetch } from '@/lib/dev-proxy'
 
 function gcd(a: number, b: number): number {
   return b === 0 ? a : gcd(b, a % b)
@@ -50,7 +51,7 @@ async function uploadApimartImage(
   const form = new FormData()
   form.append('file', base64ToBlob(ref.base64, ref.mime), 'reference.png')
 
-  const resp = await fetch(`${base}/uploads/images`, {
+  const resp = await devProxiedFetch(`${base}/uploads/images`, {
     method: 'POST',
     headers: authHeaders(model),
     body: form,
@@ -76,7 +77,7 @@ async function pollApimartTask(
   for (let i = 0; i < maxAttempts; i++) {
     await new Promise((r) => setTimeout(r, intervalMs))
     try {
-      const resp = await fetch(url, { headers: authHeaders(model) })
+      const resp = await devProxiedFetch(url, { headers: authHeaders(model) })
       if (!resp.ok) continue
 
       const json = JSON.parse(await resp.text())
@@ -138,7 +139,7 @@ export class ApimartProvider implements ImageProvider {
         body.image_urls = uploaded
       }
 
-      const resp = await fetch(`${base}/images/generations`, {
+      const resp = await devProxiedFetch(`${base}/images/generations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders(model) },
         body: JSON.stringify(body),

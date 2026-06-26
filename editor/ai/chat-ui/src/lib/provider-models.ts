@@ -8,6 +8,7 @@
  */
 
 import type { ModelType } from '@/bridge'
+import { devProxiedFetch } from '@/lib/dev-proxy'
 
 export interface FetchedModel {
   id: string
@@ -76,7 +77,7 @@ export async function fetchProviderModels(
   const headers: Record<string, string> = { Accept: 'application/json' }
   if (apiKey.trim()) headers.Authorization = `Bearer ${apiKey.trim()}`
 
-  const resp = await fetch(`${base}/models`, { headers })
+  const resp = await devProxiedFetch(`${base}/models`, { headers })
   if (!resp.ok) {
     throw new Error(`${resp.status} ${resp.statusText}`.trim())
   }

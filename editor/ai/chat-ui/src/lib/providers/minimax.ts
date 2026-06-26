@@ -15,9 +15,9 @@ import {
   formatApiError,
   type ImageProvider,
 } from '@/lib/image-gen'
+import { devProxiedFetch } from '@/lib/dev-proxy'
 
 function apiBase(model: ModelConfig): string {
-  if (import.meta.env.DEV) return '/api/minimax/v1'
   return model.apiEndpoint.trim().replace(/\/+$/, '')
 }
 
@@ -67,7 +67,7 @@ export class MinimaxProvider implements ImageProvider {
         ]
       }
 
-      const resp = await fetch(`${base}/image_generation`, {
+      const resp = await devProxiedFetch(`${base}/image_generation`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders(model) },
         body: JSON.stringify(body),

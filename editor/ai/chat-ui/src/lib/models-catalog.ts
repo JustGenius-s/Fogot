@@ -12,6 +12,7 @@
  */
 
 import { useSyncExternalStore } from 'react'
+import { devProxiedFetch } from '@/lib/dev-proxy'
 
 export const MODELS_DEV_API = 'https://models.dev/api.json'
 
@@ -122,7 +123,7 @@ export async function fetchCatalog(): Promise<Catalog> {
   setState({ loading: true, error: null })
   inFlight = (async () => {
     try {
-      const resp = await fetch(MODELS_DEV_API, { headers: { Accept: 'application/json' } })
+      const resp = await devProxiedFetch(MODELS_DEV_API, { headers: { Accept: 'application/json' } })
       if (!resp.ok) throw new Error(`models.dev responded ${resp.status}`)
       const data = (await resp.json()) as Catalog
       writeCache(data)
