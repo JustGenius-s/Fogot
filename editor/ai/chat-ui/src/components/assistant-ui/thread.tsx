@@ -69,7 +69,8 @@ import {
   SquareIcon,
 } from "lucide-react";
 import { useState, type FC } from "react";
-import { useAgentId, setAppView } from "@/bridge";
+import { useAgentId, setAppView, useConfig, useSelectedChatModelId, getSelectedChatModel } from "@/bridge";
+import { resolveCapabilities } from "@/lib/model-capabilities";
 import { useTranslation } from "@/lib/i18n";
 
 const ThreadHeader: FC = () => {
@@ -247,6 +248,15 @@ const Composer: FC = () => {
 const ComposerAction: FC = () => {
   const agentId = useAgentId();
   const { t } = useTranslation();
+  // Subscribe to config + selected model so vision support stays reactive.
+  useConfig();
+  useSelectedChatModelId();
+  // Image mode uses attachments as generation references, so always allow it.
+  // Other modes route through the chat model, so gate on its vision support.
+  const chatModel = getSelectedChatModel();
+  const allowAttachments =
+    agentId === "image" ||
+    (chatModel ? resolveCapabilities(chatModel).vision : false);
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
       <div className="flex items-center gap-1">
@@ -257,7 +267,7 @@ const ComposerAction: FC = () => {
       <div className="flex items-center gap-1">
         <ContextDisplayRing side="top" />
         <AssetPicker />
-        <ComposerAddAttachment />
+        {allowAttachments && <ComposerAddAttachment />}
         <AuiIf condition={(s) => !s.thread.isRunning}>
           <ComposerPrimitive.Send render={<TooltipIconButton tooltip={t("thread.sendMessage")} side="bottom" type="button" variant="default" size="icon" className="aui-composer-send size-8 rounded-full" aria-label={t("thread.sendMessage")} />}><ArrowUpIcon className="aui-composer-send-icon size-4" /></ComposerPrimitive.Send>
         </AuiIf>

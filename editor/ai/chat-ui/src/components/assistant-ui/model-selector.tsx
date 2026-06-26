@@ -10,8 +10,19 @@ import {
 } from "react";
 import { Select as SelectPrimitive } from "radix-ui";
 import type { VariantProps } from "class-variance-authority";
-import { CheckIcon, BotIcon, ImageIcon, AudioLinesIcon } from "lucide-react";
+import {
+  CheckIcon,
+  BotIcon,
+  ImageIcon,
+  AudioLinesIcon,
+  BlocksIcon,
+  SparklesIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { resolveCapabilities } from "@/lib/model-capabilities";
+import { getProvider } from "@/lib/models-catalog";
+import { ProviderLogo } from "@/components/assistant-ui/provider-logo";
+import { useTranslation } from "@/lib/i18n";
 import {
   SelectRoot,
   SelectTrigger,
@@ -36,6 +47,75 @@ function modelTypeIcon(type: ModelType) {
   if (type === "image") return <ImageIcon className="size-3.5" />;
   if (type === "audio") return <AudioLinesIcon className="size-3.5" />;
   return <BotIcon className="size-3.5" />;
+}
+
+/**
+ * Provider logo (from models.dev) with a graceful fallback to the model-type
+ * icon, mirroring opencode's provider-led model list.
+ */
+function ModelGlyph({ model }: { model: ModelConfig }) {
+  const typeIcon = <span className="flex shrink-0">{modelTypeIcon(model.type)}</span>;
+  if (!model.providerId) return typeIcon;
+  return (
+    <ProviderLogo
+      providerId={model.providerId}
+      className="size-3.5 shrink-0"
+      fallback={typeIcon}
+    />
+  );
+}
+
+/** Small capability indicators (vision / tools / reasoning) for chat models. */
+function ModelCapBadges({ model }: { model: ModelConfig }) {
+  const { t } = useTranslation();
+  if (model.type !== "chat") return null;
+  const caps = resolveCapabilities(model);
+  return (
+    <span className="flex shrink-0 items-center gap-1 text-muted-foreground/70">
+      {caps.vision && (
+        <span title={t("selector.capVision")} className="flex">
+          <ImageIcon className="size-3" />
+        </span>
+      )}
+      {caps.toolCall && (
+        <span title={t("selector.capToolCall")} className="flex">
+          <BlocksIcon className="size-3" />
+        </span>
+      )}
+      {caps.reasoning && (
+        <span title={t("selector.capReasoning")} className="flex">
+          <SparklesIcon className="size-3" />
+        </span>
+      )}
+    </span>
+  );
+}
+
+interface ModelGroup {
+  key: string;
+  label: string;
+  providerId?: string;
+  items: ModelConfig[];
+}
+
+/** Group models by their catalog provider, with a fallback for custom models. */
+function groupModelsByProvider(models: ModelConfig[], customLabel: string): ModelGroup[] {
+  const groups = new Map<string, ModelGroup>();
+  for (const m of models) {
+    const key = m.providerId ?? "__custom__";
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        key,
+        label: m.providerId ? getProvider(m.providerId)?.name ?? m.providerId : customLabel,
+        providerId: m.providerId,
+        items: [],
+      };
+      groups.set(key, group);
+    }
+    group.items.push(m);
+  }
+  return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label));
 }
 
 // ─── Context ──────────────────────────────────────────────────────
@@ -91,7 +171,7 @@ function ModelSelectorValue() {
 
   return (
     <span className="inline-flex! items-center gap-1.5">
-      <span className="flex shrink-0">{modelTypeIcon(selected.type)}</span>
+      <ModelGlyph model={selected} />
       <span className="truncate">{selected.name}</span>
     </span>
   );
@@ -101,10 +181,40 @@ type ModelSelectorContentProps = ComponentPropsWithoutRef<typeof SelectContent>;
 
 function ModelSelectorContent({ className, children, ...props }: ModelSelectorContentProps) {
   const { models } = useModelSelectorContext();
+  const { t } = useTranslation();
+
+  if (children) {
+    return (
+      <SelectContent className={className} {...props}>
+        {children}
+      </SelectContent>
+    );
+  }
+
+  const groups = groupModelsByProvider(models, t("selector.customGroup"));
+  const showLabels = groups.length > 1;
+
   return (
     <SelectContent className={className} {...props}>
-      {children ??
-        models.map((model) => <ModelSelectorItem key={model.id} model={model} />)}
+      {groups.map((group) => (
+        <SelectPrimitive.Group key={group.key}>
+          {showLabels && (
+            <SelectPrimitive.Label className="flex items-center gap-1.5 px-2 py-1.5 text-xs font-medium text-muted-foreground/70">
+              {group.providerId && (
+                <ProviderLogo
+                  providerId={group.providerId}
+                  className="size-3.5 shrink-0"
+                  fallback={<span className="hidden" />}
+                />
+              )}
+              <span className="truncate">{group.label}</span>
+            </SelectPrimitive.Label>
+          )}
+          {group.items.map((model) => (
+            <ModelSelectorItem key={model.id} model={model} />
+          ))}
+        </SelectPrimitive.Group>
+      ))}
     </SelectContent>
   );
 }
@@ -133,11 +243,13 @@ function ModelSelectorItem({ model, className, ...props }: ModelSelectorItemProp
       </span>
       <SelectPrimitive.ItemText>
         <span className="flex items-center gap-1.5">
-          <span className="flex shrink-0">{modelTypeIcon(model.type)}</span>
+          <ModelGlyph model={model} />
           <span>{model.name}</span>
         </span>
       </SelectPrimitive.ItemText>
-      <span className="ms-auto ps-4 text-xs text-muted-foreground">{model.model}</span>
+      <span className="ms-auto ps-3">
+        <ModelCapBadges model={model} />
+      </span>
     </SelectPrimitive.Item>
   );
 }
@@ -175,8 +287,9 @@ const ModelSelectorView: FC<ModelSelectorViewProps> = ({
     const m = models[0];
     return (
       <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground">
-        {modelTypeIcon(m.type)}
+        <ModelGlyph model={m} />
         <span className="truncate">{m.name}</span>
+        <ModelCapBadges model={m} />
       </span>
     );
   }

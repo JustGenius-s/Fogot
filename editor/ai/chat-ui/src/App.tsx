@@ -7,7 +7,8 @@ import {
 } from '@assistant-ui/react'
 import { useChatRuntime } from '@assistant-ui/react-ai-sdk'
 import { DirectChatTransport, ToolLoopAgent, stepCountIs } from 'ai'
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
+import { createChatModel } from '@/lib/provider-registry'
+import { ensureCatalog } from '@/lib/models-catalog'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Thread } from '@/components/assistant-ui/thread'
 import { ModelSettings, SettingsView } from '@/components/assistant-ui/model-settings'
@@ -16,6 +17,7 @@ import { AssetMode } from '@/components/assets/asset-mode'
 import { DesignMode } from '@/components/assets/design-mode'
 import { AudioMode } from '@/components/assets/audio-mode'
 import { allTools, getToolsForAgent } from '@/ai/tools'
+import { resolveCapabilities, resolveModelLimits, VISION_REQUIRED_TOOLS } from '@/lib/model-capabilities'
 import { getDefaultSystemPrompt, getPlanSystemPrompt, getDesignSystemPrompt, getAgent } from '@/ai/agents'
 import { loadDesignTemplate } from '@/lib/designs'
 import { createImageChatTransport } from '@/ai/image-transport'
@@ -142,9 +144,32 @@ Write in the same language as the conversation. Use bullet points. Keep under 80
   return data.choices?.[0]?.message?.content ?? ''
 }
 
+/**
+ * Drop image parts from a message's parts/content when the model can't see
+ * images. Keeps text and other parts intact.
+ */
+function stripImageParts(msg: any): any {
+  const isImagePart = (p: any) =>
+    p?.type === 'image' ||
+    ((p?.type === 'file' || p?.type === 'image-url') &&
+      typeof p?.mediaType === 'string' &&
+      p.mediaType.startsWith('image/'))
+
+  let changed = false
+  const map = (arr: any[] | undefined) => {
+    if (!Array.isArray(arr)) return arr
+    const next = arr.filter((p) => !isImagePart(p))
+    if (next.length !== arr.length) changed = true
+    return next
+  }
+  const parts = map(msg.parts)
+  const content = Array.isArray(msg.content) ? map(msg.content) : msg.content
+  return changed ? { ...msg, parts, content } : msg
+}
+
 function wrapTransport(
   inner: DirectChatTransport,
-  modelConfig: { apiEndpoint: string; apiKey: string; model: string; contextWindow?: number },
+  modelConfig: { apiEndpoint: string; apiKey: string; model: string; contextWindow?: number; supportsVision?: boolean },
 ): DirectChatTransport {
   const origSend = inner.sendMessages.bind(inner)
   const contextWindow = modelConfig.contextWindow ?? 1_000_000
@@ -154,6 +179,12 @@ function wrapTransport(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   inner.sendMessages = async (args: any) => {
     let msgs = [...args.messages]
+
+    // --- Strip images for text-only models ---
+    if (modelConfig.supportsVision === false) {
+      msgs = msgs.map(stripImageParts)
+    }
+
     const msgsForEstimation = msgs
 
     // --- Inject attachments ---
@@ -464,9 +495,11 @@ export default function App() {
   const agentId = useAgentId()
   const chatModelId = useSelectedChatModelId()
   const chatModel = getSelectedChatModel()
+  const appView = useAppView()
 
 
   useEffect(() => {
+    ensureCatalog()
     async function init() {
       const builtins = getBuiltinSkills()
       const project = await loadProjectSkills()
@@ -499,20 +532,19 @@ export default function App() {
 
     if (!isConfigured || !chatModel) return null
 
-    const provider = createOpenAICompatible({
-      name: 'fogot-llm',
-      apiKey: chatModel.apiKey,
-      baseURL: chatModel.apiEndpoint,
-      transformRequestBody: (args) => {
-        let extra: Record<string, unknown> = {}
-        if (chatModel.extraBody) {
-          try { extra = JSON.parse(chatModel.extraBody) } catch {}
-        }
-        return { ...extra, ...args }
-      },
-    })
+    let extraBody: Record<string, unknown> | undefined
+    if (chatModel.extraBody) {
+      try { extraBody = JSON.parse(chatModel.extraBody) } catch {}
+    }
 
-    const model = provider.chatModel(chatModel.model)
+    const model = createChatModel({
+      npm: chatModel.npm,
+      providerId: chatModel.providerId,
+      baseURL: chatModel.apiEndpoint,
+      apiKey: chatModel.apiKey,
+      modelId: chatModel.model,
+      extraBody,
+    })
     configureDelegateTool(model, getToolsForAgent)
 
     const agentConfig = (agentId && agentId !== DEFAULT_MODE_ID) ? getAgent(agentId) : undefined
@@ -543,13 +575,27 @@ export default function App() {
       maxSteps = agentConfig?.maxSteps ?? 25
     }
 
+    // --- Capability adaptation (mirrors opencode/models.dev) ---
+    // Filter tools/params by what the selected model can actually handle so a
+    // text-only model never receives images or tool definitions it can't use.
+    const caps = resolveCapabilities(chatModel)
+    if (!caps.toolCall) {
+      tools = {}
+    } else if (!caps.vision) {
+      tools = Object.fromEntries(
+        Object.entries(tools).filter(([name]) => !VISION_REQUIRED_TOOLS.includes(name as never)),
+      ) as typeof tools
+    }
+
+    const limits = resolveModelLimits(chatModel)
+
     const agent = new ToolLoopAgent({
       model,
       tools,
       instructions,
       stopWhen: stepCountIs(maxSteps),
-      maxTokens: chatModel.maxTokens ?? 4096,
-      temperature: chatModel.temperature ?? 0.7,
+      maxTokens: limits.maxOutputTokens,
+      ...(caps.temperature ? { temperature: chatModel.temperature ?? 0.7 } : {}),
     } as any)
 
     const inner = new DirectChatTransport({
@@ -590,11 +636,15 @@ export default function App() {
       apiEndpoint: chatModel.apiEndpoint,
       apiKey: chatModel.apiKey,
       model: chatModel.model,
-      contextWindow: chatModel.contextWindow,
+      contextWindow: limits.contextWindow,
+      supportsVision: caps.vision,
     })
   }, [chatModelId, agentId, isConfigured, chatModel, designTemplate])
 
   if (!transport) {
+    // Still allow reaching settings (and other views) before any model is
+    // configured — otherwise the gear button appears to do nothing.
+    if (appView === 'settings') return <SettingsView />
     return <UnconfiguredView />
   }
 

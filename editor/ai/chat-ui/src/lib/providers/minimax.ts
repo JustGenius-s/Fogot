@@ -17,6 +17,7 @@ import {
 } from '@/lib/image-gen'
 
 function apiBase(model: ModelConfig): string {
+  if (import.meta.env.DEV) return '/api/minimax/v1'
   return model.apiEndpoint.trim().replace(/\/+$/, '')
 }
 

@@ -17,6 +17,18 @@ export default defineConfig(({ command }) => ({
     port: 5173,
     strictPort: true,
     host: '127.0.0.1',
+    proxy: {
+      '/api/minimax': {
+        target: 'https://api.minimaxi.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/minimax/, ''),
+      },
+      '/api/ofox': {
+        target: 'https://api.ofox.io',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/ofox/, ''),
+      },
+    },
   },
   build: {
     target: 'safari15',

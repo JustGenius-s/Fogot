@@ -14,6 +14,23 @@ import { setLocale } from '@/lib/i18n'
 export type ModelType = 'chat' | 'image' | 'audio'
 export type ModelAuthMode = 'bearer' | 'none'
 
+/**
+ * Per-model capability flags, mirroring the model metadata fields used by
+ * models.dev / opencode. They gate which tools and message parts are sent to
+ * a chat model so text-only models don't receive images or tool definitions
+ * they can't handle.
+ */
+export interface ModelCapabilities {
+  /** Accepts image input (vision). Gates `read_image` and image attachments. */
+  vision: boolean
+  /** Supports function/tool calling. When false, no tools are sent. */
+  toolCall: boolean
+  /** Supports reasoning / chain-of-thought output. */
+  reasoning: boolean
+  /** Accepts a `temperature` parameter. Some reasoning models reject it. */
+  temperature: boolean
+}
+
 export interface ModelConfig {
   id: string
   type: ModelType
@@ -30,21 +47,75 @@ export interface ModelConfig {
   provider?: string
   /** Provider account/group id appended as a query param (MiniMax GroupId). */
   groupId?: string
+  /**
+   * Manual capability overrides. Any field set here wins over the catalog /
+   * heuristic detection in `resolveCapabilities`. Chat models only.
+   */
+  capabilities?: Partial<ModelCapabilities>
+  /**
+   * models.dev catalog provider id (e.g. "openai", "zhipuai") when this model
+   * was added from the catalog. Drives capability lookup and SDK routing.
+   * Undefined for custom OpenAI-compatible endpoints.
+   */
+  providerId?: string
+  /**
+   * AI SDK npm package for the provider (e.g. "@ai-sdk/openai-compatible"),
+   * copied from the catalog. Selects the transport in `provider-registry`.
+   */
+  npm?: string
 }
 
 export interface AIConfig {
   models: ModelConfig[]
 }
 
-// ─── Model Persistence (localStorage) ─────────────────────────────
+/** A model enabled within a provider connection (opencode's `provider.models`). */
+export interface ProviderModelEntry {
+  /** Display name override (defaults to the catalog model name). */
+  name?: string
+  /**
+   * Model modality, derived from the catalog `modalities.output` at enable
+   * time (image / audio output → those types; otherwise chat). Drives which
+   * surface the derived model shows up on. Defaults to chat when unset.
+   */
+  type?: ModelType
+  /** Capability overrides; catalog values win otherwise. Chat models only. */
+  capabilities?: Partial<ModelCapabilities>
+}
+
+/**
+ * A configured provider connection, mirroring opencode's `provider` config:
+ * credentials live on the provider and are shared by every model under it; the
+ * `models` map holds the models the user has enabled for that provider.
+ */
+export interface ProviderConfig {
+  /** Connection id: catalog provider id, or `custom-<ts>` for custom endpoints. */
+  id: string
+  /** models.dev catalog provider id. Undefined for custom endpoints. */
+  providerId?: string
+  /** Display name. */
+  name: string
+  /** AI SDK npm package (transport routing in provider-registry). */
+  npm?: string
+  /** Shared API key for all of this provider's models. */
+  apiKey: string
+  /** Base URL (catalog default, or required for custom endpoints). */
+  baseURL?: string
+  /** Enabled models, keyed by model id. */
+  models: Record<string, ProviderModelEntry>
+}
+
+// ─── Persistence (localStorage) ───────────────────────────────────
 
 const MODELS_STORAGE_KEY = 'fogot-ai-models'
+const PROVIDERS_STORAGE_KEY = 'fogot-ai-providers'
 const SELECTED_MODEL_KEY = 'fogot-ai-selected-model'
 const SELECTED_IMAGE_MODEL_KEY = 'fogot-ai-selected-image-model'
 const SELECTED_AUDIO_MODEL_KEY = 'fogot-ai-selected-audio-model'
 const IMAGE_SIZE_KEY = 'fogot-ai-image-size'
 const IMAGE_RESOLUTION_KEY = 'fogot-ai-image-resolution'
 const IMAGE_QUALITY_KEY = 'fogot-ai-image-quality'
+
 function loadModelsFromStorage(): ModelConfig[] {
   try {
     const raw = localStorage.getItem(MODELS_STORAGE_KEY)
@@ -62,14 +133,89 @@ function saveModelsToStorage(models: ModelConfig[]) {
   } catch { /* quota exceeded, etc. */ }
 }
 
+function loadProvidersFromStorage(): ProviderConfig[] {
+  try {
+    const raw = localStorage.getItem(PROVIDERS_STORAGE_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function saveProvidersToStorage(list: ProviderConfig[]) {
+  try {
+    localStorage.setItem(PROVIDERS_STORAGE_KEY, JSON.stringify(list))
+  } catch { /* quota exceeded, etc. */ }
+}
+
+/** Expand provider connections into individual ModelConfigs (any modality). */
+function deriveModels(list: ProviderConfig[]): ModelConfig[] {
+  const out: ModelConfig[] = []
+  for (const p of list) {
+    for (const [modelId, entry] of Object.entries(p.models)) {
+      out.push({
+        id: `${p.id}::${modelId}`,
+        type: entry.type ?? 'chat',
+        name: entry.name || modelId,
+        apiKey: p.apiKey,
+        apiEndpoint: p.baseURL ?? '',
+        model: modelId,
+        providerId: p.providerId,
+        npm: p.npm,
+        capabilities: entry.capabilities,
+      })
+    }
+  }
+  return out
+}
+
 // ─── Config Store ─────────────────────────────────────────────────
 
-let config: AIConfig = { models: loadModelsFromStorage() }
+// `storedModels` now holds only image/audio models. Chat models are derived
+// from `providers` (provider connections), matching opencode's config shape.
+let storedModels = loadModelsFromStorage()
+let providers = loadProvidersFromStorage()
+
+// One-time migration: fold any legacy chat ModelConfigs into provider
+// connections so existing setups keep working after the refactor.
+;(function migrateLegacyChatModels() {
+  const legacy = storedModels.filter((m) => m.type === 'chat')
+  if (legacy.length === 0) return
+  for (const m of legacy) {
+    const connId = m.providerId ?? `custom-${m.id}`
+    let conn = providers.find((p) => p.id === connId)
+    if (!conn) {
+      conn = {
+        id: connId,
+        providerId: m.providerId,
+        name: m.providerId ?? m.name,
+        npm: m.npm,
+        apiKey: m.apiKey,
+        baseURL: m.apiEndpoint,
+        models: {},
+      }
+      providers.push(conn)
+    }
+    conn.models[m.model] = { name: m.name, type: 'chat', capabilities: m.capabilities }
+  }
+  storedModels = storedModels.filter((m) => m.type !== 'chat')
+  saveModelsToStorage(storedModels)
+  saveProvidersToStorage(providers)
+})()
+
+function composeModels(): ModelConfig[] {
+  return [...storedModels, ...deriveModels(providers)]
+}
+
+let config: AIConfig = { models: composeModels() }
 
 const configListeners = new Set<() => void>()
 
+/** Rebuild the merged model list from stored + derived models and notify. */
 function emitConfig() {
-  config = { ...config }
+  config = { models: composeModels() }
   configListeners.forEach((fn) => fn())
 }
 
@@ -88,7 +234,7 @@ export function getConfig(): AIConfig {
 }
 
 export function getChatModels(): ModelConfig[] {
-  return config.models.filter((m) => m.type === 'chat')
+  return deriveModels(providers).filter((m) => m.type === 'chat')
 }
 
 export function getImageModels(): ModelConfig[] {
@@ -99,14 +245,70 @@ export function getAudioModels(): ModelConfig[] {
   return config.models.filter((m) => m.type === 'audio')
 }
 
-/** Replace the full models list (called from settings UI). */
+/**
+ * Replace the custom (manually-added) image/audio models. Models derived from
+ * provider connections — whose ids contain `::` — and chat models are managed
+ * elsewhere and never persisted here.
+ */
 export function setModels(models: ModelConfig[]) {
-  config = { ...config, models }
-  saveModelsToStorage(models)
-  autoSelectChatModel()
+  storedModels = models.filter((m) => m.type !== 'chat' && !m.id.includes('::'))
+  saveModelsToStorage(storedModels)
+  emitConfig()
   autoSelectImageModel()
   autoSelectAudioModel()
+}
+
+// ─── Provider Connections (chat) ──────────────────────────────────
+
+export function getProviderConfigs(): ProviderConfig[] {
+  return providers
+}
+
+export function useProviderConfigs(): ProviderConfig[] {
+  return useSyncExternalStore(
+    (listener) => {
+      configListeners.add(listener)
+      return () => configListeners.delete(listener)
+    },
+    () => providers,
+  )
+}
+
+function commitProviders(next: ProviderConfig[]) {
+  providers = next
+  saveProvidersToStorage(providers)
   emitConfig()
+  autoSelectChatModel()
+}
+
+/** Add or replace a provider connection (matched by id). */
+export function upsertProviderConfig(conn: ProviderConfig) {
+  const idx = providers.findIndex((p) => p.id === conn.id)
+  commitProviders(
+    idx >= 0 ? providers.map((p, i) => (i === idx ? conn : p)) : [...providers, conn],
+  )
+}
+
+export function removeProviderConfig(id: string) {
+  commitProviders(providers.filter((p) => p.id !== id))
+}
+
+/** Enable or disable a single model within a provider connection. */
+export function setProviderModelEnabled(
+  connId: string,
+  modelId: string,
+  enabled: boolean,
+  entry?: ProviderModelEntry,
+) {
+  commitProviders(
+    providers.map((p) => {
+      if (p.id !== connId) return p
+      const models = { ...p.models }
+      if (enabled) models[modelId] = entry ?? models[modelId] ?? {}
+      else delete models[modelId]
+      return { ...p, models }
+    }),
+  )
 }
 
 // ─── Selected Chat Model Store ────────────────────────────────────

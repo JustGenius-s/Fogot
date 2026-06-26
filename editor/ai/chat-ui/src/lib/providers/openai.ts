@@ -81,7 +81,15 @@ export class OpenAIProvider implements ImageProvider {
     const { prompt, size, resolution, quality, referenceImage: refOpt } = opts
     const referenceImage = Array.isArray(refOpt) ? refOpt[0] : refOpt
 
-    const { apiBase, apiUrl } = resolveOpenAIUrls(model.apiEndpoint)
+    let endpoint = model.apiEndpoint
+    if (import.meta.env.DEV) {
+      try {
+        const hostname = new URL(endpoint).hostname
+        if (hostname === 'api.ofox.io') endpoint = '/api/ofox/v1'
+      } catch {}
+    }
+
+    const { apiBase, apiUrl } = resolveOpenAIUrls(endpoint)
 
     const doRequest = async (body: Record<string, unknown>) => {
       const resp = await fetch(apiUrl, {
