@@ -27,7 +27,7 @@ interface EditFileArgs {
 export const EditFileToolUI = makeAssistantToolUI<EditFileArgs, string>({
   toolName: 'edit_file',
   render: ({ args, status }) => {
-    const [open, setOpen] = useState(true)
+    const [open, setOpen] = useState(false)
 
     const isRunning = status?.type === 'running'
     const oldStr = args?.old_string ?? ''
@@ -61,7 +61,7 @@ export const EditFileToolUI = makeAssistantToolUI<EditFileArgs, string>({
       >
         <CollapsibleTrigger
           disabled={isRunning || !hasDiff}
-          className="group/trigger flex w-full items-center data-[disabled]:cursor-default"
+          className="group/trigger flex w-full items-center data-disabled:cursor-default"
         >
           <FileHeader
             path={args.path}
