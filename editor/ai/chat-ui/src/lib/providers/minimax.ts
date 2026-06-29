@@ -34,7 +34,7 @@ export class MinimaxProvider implements ImageProvider {
   }
 
   async generate(opts: GenerateImageOptions, model: ModelConfig): Promise<ImageModelCall> {
-    const { prompt, size, referenceImage } = opts
+    const { prompt, size, background, referenceImage } = opts
 
     try {
       const base = apiBase(model)
@@ -66,6 +66,7 @@ export class MinimaxProvider implements ImageProvider {
           { type: 'character', image_file: `data:${refData.mime};base64,${refData.base64}` },
         ]
       }
+      if (background?.trim()) body.background = background.trim()
 
       const resp = await devProxiedFetch(`${base}/image_generation`, {
         method: 'POST',

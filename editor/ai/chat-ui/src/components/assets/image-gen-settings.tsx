@@ -1,5 +1,5 @@
 import { type FC } from 'react'
-import { RatioIcon, SparklesIcon, ImageIcon } from 'lucide-react'
+import { RatioIcon, SparklesIcon, ImageIcon, LayersIcon } from 'lucide-react'
 import {
   SelectRoot,
   SelectTrigger,
@@ -15,6 +15,8 @@ import {
   setImageResolution,
   useImageQuality,
   setImageQuality,
+  useImageBackground,
+  setImageBackground,
 } from '@/bridge'
 import { useTranslation } from '@/lib/i18n'
 
@@ -35,6 +37,7 @@ export const ImageGenSettings: FC = () => {
   const size = useImageSize()
   const resolution = useImageResolution()
   const quality = useImageQuality()
+  const background = useImageBackground()
 
   const SIZE_OPTIONS = [
     { value: AUTO, label: t('img.auto') },
@@ -51,6 +54,11 @@ export const ImageGenSettings: FC = () => {
     { value: 'low', label: t('img.low') },
     { value: 'medium', label: t('img.medium') },
     { value: 'high', label: t('img.high') },
+  ]
+  const BG_OPTIONS = [
+    { value: AUTO, label: t('img.auto') },
+    { value: 'transparent', label: t('img.transparent') },
+    { value: 'opaque', label: t('img.opaque') },
   ]
 
   if (agentId !== 'image') return null
@@ -104,6 +112,24 @@ export const ImageGenSettings: FC = () => {
         </SelectTrigger>
         <SelectContent side="top">
           {QUALITY_OPTIONS.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </SelectRoot>
+
+      {/* Background */}
+      <SelectRoot
+        value={background || AUTO}
+        onValueChange={(v) => setImageBackground(v === AUTO ? '' : v)}
+      >
+        <SelectTrigger variant="ghost" size="sm" className="gap-1">
+          <LayersIcon className="size-3.5 shrink-0" />
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent side="top">
+          {BG_OPTIONS.map((opt) => (
             <SelectItem key={opt.value} value={opt.value}>
               {opt.label}
             </SelectItem>

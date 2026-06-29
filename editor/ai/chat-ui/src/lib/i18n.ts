@@ -350,6 +350,8 @@ const messages = {
   'img.low': { en: 'Low', zh: '低' },
   'img.medium': { en: 'Medium', zh: '中' },
   'img.high': { en: 'High', zh: '高' },
+  'img.transparent': { en: 'Transparent', zh: '透明' },
+  'img.opaque': { en: 'Opaque', zh: '不透明' },
   'gen.creating': { en: 'Creating image', zh: '正在创建图像' },
   'gen.sketching': { en: 'Sketching', zh: '起稿中' },
   'gen.draft': { en: 'Generating draft', zh: '生成草稿' },

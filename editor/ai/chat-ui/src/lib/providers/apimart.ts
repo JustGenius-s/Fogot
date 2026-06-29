@@ -112,7 +112,7 @@ export class ApimartProvider implements ImageProvider {
   }
 
   async generate(opts: GenerateImageOptions, model: ModelConfig): Promise<ImageModelCall> {
-    const { prompt, size, resolution, quality, referenceImage } = opts
+    const { prompt, size, resolution, quality, background, referenceImage } = opts
 
     try {
       const base = model.apiEndpoint.trim().replace(/\/+$/, '')
@@ -124,6 +124,7 @@ export class ApimartProvider implements ImageProvider {
       }
       if (resolution?.trim()) body.resolution = resolution.trim()
       if (quality?.trim()) body.quality = quality.trim()
+      if (background?.trim()) body.background = background.trim()
 
       const refs = referenceImage
         ? (Array.isArray(referenceImage) ? referenceImage : [referenceImage])

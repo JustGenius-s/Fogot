@@ -115,6 +115,7 @@ const SELECTED_AUDIO_MODEL_KEY = 'fogot-ai-selected-audio-model'
 const IMAGE_SIZE_KEY = 'fogot-ai-image-size'
 const IMAGE_RESOLUTION_KEY = 'fogot-ai-image-resolution'
 const IMAGE_QUALITY_KEY = 'fogot-ai-image-quality'
+const IMAGE_BACKGROUND_KEY = 'fogot-ai-image-background'
 
 function loadModelsFromStorage(): ModelConfig[] {
   try {
@@ -494,6 +495,29 @@ export function setImageQuality(q: string) {
 
 export function getImageQuality(): string {
   return imageQuality
+}
+
+let imageBackground = localStorage.getItem(IMAGE_BACKGROUND_KEY) ?? ''
+const imageBackgroundListeners = new Set<() => void>()
+
+export function useImageBackground(): string {
+  return useSyncExternalStore(
+    (listener) => {
+      imageBackgroundListeners.add(listener)
+      return () => imageBackgroundListeners.delete(listener)
+    },
+    () => imageBackground,
+  )
+}
+
+export function setImageBackground(bg: string) {
+  imageBackground = bg
+  try { localStorage.setItem(IMAGE_BACKGROUND_KEY, bg) } catch {}
+  imageBackgroundListeners.forEach((fn) => fn())
+}
+
+export function getImageBackground(): string {
+  return imageBackground
 }
 
 // ─── Pending Attachments Store ────────────────────────────────────

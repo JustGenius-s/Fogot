@@ -79,7 +79,7 @@ export class OpenAIProvider implements ImageProvider {
   }
 
   async generate(opts: GenerateImageOptions, model: ModelConfig): Promise<ImageModelCall> {
-    const { prompt, size, resolution, quality, referenceImage: refOpt } = opts
+    const { prompt, size, resolution, quality, background, referenceImage: refOpt } = opts
     const referenceImage = Array.isArray(refOpt) ? refOpt[0] : refOpt
 
     const endpoint = model.apiEndpoint
@@ -111,6 +111,7 @@ export class OpenAIProvider implements ImageProvider {
         body.size = pixels ?? ratio
       }
       if (quality?.trim()) body.quality = quality.trim()
+      if (background?.trim()) body.background = background.trim()
 
       let refBase64 = ''
       let refMime = 'image/png'

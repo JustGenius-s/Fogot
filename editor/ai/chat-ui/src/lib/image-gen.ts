@@ -58,6 +58,7 @@ export interface GenerateImageOptions {
   size?: string
   resolution?: string
   quality?: string
+  background?: string
   referenceImage?: string | string[]
   model?: ModelConfig
 }
