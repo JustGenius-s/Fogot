@@ -9,6 +9,7 @@ import {
   type ComponentPropsWithoutRef,
   type ReactNode,
   type FC,
+  type PointerEvent,
 } from "react";
 import { Select as SelectPrimitive, HoverCard as HoverCardPrimitive } from "radix-ui";
 import type { VariantProps } from "class-variance-authority";
@@ -56,6 +57,22 @@ function useModeSelectorContext() {
 }
 
 const GATE_MS = 350
+const MODE_INTRO_WIDTH = 256
+const MODE_INTRO_OFFSET = 6
+const MODE_INTRO_COLLISION_PADDING = 8
+
+type ModeIntroSide = "top" | "right" | "left"
+
+function getModeIntroSide(triggerRect: DOMRect): ModeIntroSide {
+  const required = MODE_INTRO_WIDTH + MODE_INTRO_OFFSET + MODE_INTRO_COLLISION_PADDING
+  const hasRightSpace = triggerRect.right + required <= window.innerWidth
+  if (hasRightSpace) return "right"
+
+  const hasLeftSpace = triggerRect.left - required >= 0
+  if (hasLeftSpace) return "left"
+
+  return "top"
+}
 
 // ─── Sub-components ───────────────────────────────────────────────
 
@@ -110,7 +127,7 @@ function ModeSelectorValue() {
   if (!selected) return <SelectPrimitive.Value />;
 
   return (
-    <span className="inline-flex! items-center gap-1.5">
+    <span className="inline-flex! min-w-0 max-w-full items-center gap-1.5">
       {selected.icon && <span className="flex shrink-0">{selected.icon}</span>}
       <span className="truncate">{selected.name}</span>
     </span>
@@ -138,6 +155,18 @@ type ModeSelectorItemProps = Omit<
 function ModeSelectorItem({ mode, className, ...props }: ModeSelectorItemProps) {
   const { hoverGate } = useModeSelectorContext();
   const [hovered, setHovered] = useState(false)
+  const [introSide, setIntroSide] = useState<ModeIntroSide>("right")
+
+  function handlePointerEnter(e: PointerEvent<HTMLDivElement>) {
+    setIntroSide(getModeIntroSide(e.currentTarget.getBoundingClientRect()))
+    if (!hoverGate) setHovered(true)
+    props.onPointerEnter?.(e)
+  }
+
+  function handlePointerLeave(e: PointerEvent<HTMLDivElement>) {
+    setHovered(false)
+    props.onPointerLeave?.(e)
+  }
 
   const itemEl = (
     <SelectPrimitive.Item
@@ -146,9 +175,9 @@ function ModeSelectorItem({ mode, className, ...props }: ModeSelectorItemProps) 
         "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pe-8 ps-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
         className,
       )}
-      onPointerEnter={(e) => { if (!hoverGate) setHovered(true); props.onPointerEnter?.(e) }}
-      onPointerLeave={(e) => { setHovered(false); props.onPointerLeave?.(e) }}
       {...props}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
     >
       <span className="absolute inset-e-2 flex size-3.5 items-center justify-center">
         <SelectPrimitive.ItemIndicator>
@@ -156,9 +185,9 @@ function ModeSelectorItem({ mode, className, ...props }: ModeSelectorItemProps) 
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>
-        <span className="flex items-center gap-1.5">
+        <span className="flex min-w-0 items-center gap-1.5">
           {mode.icon && <span className="flex shrink-0">{mode.icon}</span>}
-          <span>{mode.name}</span>
+          <span className="truncate">{mode.name}</span>
         </span>
       </SelectPrimitive.ItemText>
       {mode.description && (
@@ -180,15 +209,19 @@ function ModeSelectorItem({ mode, className, ...props }: ModeSelectorItemProps) 
       <HoverCardPrimitive.Trigger asChild>{itemEl}</HoverCardPrimitive.Trigger>
       <HoverCardPrimitive.Portal>
         <HoverCardPrimitive.Content
-          side="right"
-          align="start"
-          sideOffset={6}
-          collisionPadding={8}
+          side={introSide}
+          align={introSide === "top" ? "center" : "start"}
+          sideOffset={MODE_INTRO_OFFSET}
+          avoidCollisions
+          collisionPadding={MODE_INTRO_COLLISION_PADDING}
+          sticky="always"
           className={cn(
-            "z-50 w-64 rounded-lg border bg-popover p-3 text-popover-foreground shadow-md",
+            "z-50 w-64 max-w-[calc(100vw-16px)] rounded-lg border bg-popover p-3 text-popover-foreground shadow-md",
             "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
             "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
             "data-[side=right]:slide-in-from-left-2",
+            "data-[side=left]:slide-in-from-right-2",
+            "data-[side=top]:slide-in-from-bottom-2",
           )}
         >
           <ModeIntroCard mode={mode} />
@@ -260,7 +293,12 @@ const ModeSelectorImpl: FC<ModeSelectorProps> = ({
   return (
     <ModeSelectorRoot modes={defaultModes} value={value} onValueChange={setAgentId}>
       <ModeSelectorTrigger variant={variant} size={size} />
-      <ModeSelectorContent className={contentClassName} />
+      <ModeSelectorContent
+        side="top"
+        align="start"
+        sideOffset={4}
+        className={contentClassName}
+      />
     </ModeSelectorRoot>
   );
 };

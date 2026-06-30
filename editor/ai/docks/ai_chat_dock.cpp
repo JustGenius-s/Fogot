@@ -23,8 +23,12 @@
 #include "editor/debugger/script_editor_debugger.h"
 #include "editor/editor_interface.h"
 #include "editor/gui/editor_file_dialog.h"
+#include "editor/themes/editor_scale.h"
 
 #include "ai_chat_html.gen.h"
+
+static constexpr int AI_CHAT_DOCK_MIN_WIDTH = 300;
+static constexpr int AI_CHAT_DOCK_MIN_HEIGHT = 200;
 
 void AIChatDock::_bind_methods() {
 }
@@ -508,13 +512,14 @@ AIChatDock::AIChatDock() {
 	set_name(TTRC("AI Chat"));
 	set_icon_name("NodeInfo");
 	set_default_slot(EditorDock::DOCK_SLOT_RIGHT_UR);
+	set_custom_minimum_size(Size2(AI_CHAT_DOCK_MIN_WIDTH, AI_CHAT_DOCK_MIN_HEIGHT) * EDSCALE);
 
 	web_view = EditorWebView::create_platform_view();
 	if (web_view) {
 		web_view->set_anchors_and_offsets_preset(PRESET_FULL_RECT);
 		web_view->set_h_size_flags(SIZE_EXPAND_FILL);
 		web_view->set_v_size_flags(SIZE_EXPAND_FILL);
-		web_view->set_custom_minimum_size(Size2(100, 200));
+		web_view->set_custom_minimum_size(Size2(AI_CHAT_DOCK_MIN_WIDTH, AI_CHAT_DOCK_MIN_HEIGHT) * EDSCALE);
 		add_child(web_view);
 		web_view->connect("js_message_received", callable_mp(this, &AIChatDock::_on_js_message));
 		web_view->connect("web_view_ready", callable_mp(this, &AIChatDock::_on_web_view_ready));

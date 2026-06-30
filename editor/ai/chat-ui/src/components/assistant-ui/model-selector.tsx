@@ -170,7 +170,7 @@ function ModelSelectorValue() {
   if (!selected) return <SelectPrimitive.Value />;
 
   return (
-    <span className="inline-flex! items-center gap-1.5">
+    <span className="inline-flex! min-w-0 max-w-full items-center gap-1.5">
       <ModelGlyph model={selected} />
       <span className="truncate">{selected.name}</span>
     </span>
@@ -242,9 +242,9 @@ function ModelSelectorItem({ model, className, ...props }: ModelSelectorItemProp
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>
-        <span className="flex items-center gap-1.5">
+        <span className="flex min-w-0 items-center gap-1.5">
           <ModelGlyph model={model} />
-          <span>{model.name}</span>
+          <span className="truncate">{model.name}</span>
         </span>
       </SelectPrimitive.ItemText>
       <span className="ms-auto ps-3">
@@ -286,7 +286,7 @@ const ModelSelectorView: FC<ModelSelectorViewProps> = ({
   if (models.length === 1) {
     const m = models[0];
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground">
+      <span className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs text-muted-foreground">
         <ModelGlyph model={m} />
         <span className="truncate">{m.name}</span>
         <ModelCapBadges model={m} />
