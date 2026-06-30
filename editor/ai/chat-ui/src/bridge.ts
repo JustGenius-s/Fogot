@@ -111,6 +111,7 @@ const MODELS_STORAGE_KEY = 'fogot-ai-models'
 const PROVIDERS_STORAGE_KEY = 'fogot-ai-providers'
 const SELECTED_MODEL_KEY = 'fogot-ai-selected-model'
 const SELECTED_IMAGE_MODEL_KEY = 'fogot-ai-selected-image-model'
+const IMAGE_MODEL_CONFIRMED_KEY = 'fogot-ai-image-model-confirmed'
 const SELECTED_AUDIO_MODEL_KEY = 'fogot-ai-selected-audio-model'
 const IMAGE_SIZE_KEY = 'fogot-ai-image-size'
 const IMAGE_RESOLUTION_KEY = 'fogot-ai-image-resolution'
@@ -385,6 +386,35 @@ export function setSelectedImageModelId(id: string) {
 export function getSelectedImageModel(): ModelConfig | undefined {
   const imageModels = getImageModels()
   return imageModels.find((m) => m.id === selectedImageModelId) ?? imageModels[0]
+}
+
+/**
+ * Tracks whether the user has explicitly confirmed a default image model
+ * (via the "Always" option in the model-selection card or via Settings).
+ * When true, the generate_image tool skips the selection card and uses the
+ * selected image model directly. Reset to false to ask again every time.
+ */
+let imageModelConfirmed = localStorage.getItem(IMAGE_MODEL_CONFIRMED_KEY) === '1'
+const imageModelConfirmedListeners = new Set<() => void>()
+
+export function useImageModelConfirmed(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      imageModelConfirmedListeners.add(listener)
+      return () => imageModelConfirmedListeners.delete(listener)
+    },
+    () => imageModelConfirmed,
+  )
+}
+
+export function getImageModelConfirmed(): boolean {
+  return imageModelConfirmed
+}
+
+export function setImageModelConfirmed(value: boolean) {
+  imageModelConfirmed = value
+  try { localStorage.setItem(IMAGE_MODEL_CONFIRMED_KEY, value ? '1' : '0') } catch {}
+  imageModelConfirmedListeners.forEach((fn) => fn())
 }
 
 // ─── Selected Audio Model Store ───────────────────────────────────

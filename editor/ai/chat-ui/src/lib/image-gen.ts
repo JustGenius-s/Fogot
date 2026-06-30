@@ -9,7 +9,7 @@
  * Each provider implements {@link ImageProvider} and lives under `./providers/`.
  */
 
-import { bridgeRPC, getImageModels, type ModelConfig } from '@/bridge'
+import { bridgeRPC, getImageModels, getSelectedImageModel, type ModelConfig } from '@/bridge'
 import { devProxiedFetch } from '@/lib/dev-proxy'
 import { OpenAIProvider } from '@/lib/providers/openai'
 import { MinimaxProvider } from '@/lib/providers/minimax'
@@ -218,7 +218,7 @@ function resolveProvider(model: ModelConfig): ImageProvider | undefined {
 // ─── Core dispatcher ───────────────────────────────────────────────
 
 async function callImageModel(opts: GenerateImageOptions): Promise<ImageModelCall> {
-  const model = opts.model ?? getImageModels()[0]
+  const model = opts.model ?? getSelectedImageModel() ?? getImageModels()[0]
 
   if (!model || !model.apiEndpoint || !model.model) {
     return { error: 'No image model configured. Add one in Settings → Image Models.' }

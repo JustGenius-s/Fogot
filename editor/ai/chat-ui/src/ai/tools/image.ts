@@ -4,8 +4,9 @@
 
 import { tool } from 'ai'
 import { z } from 'zod'
-import { bridgeRPC } from '@/bridge'
+import { bridgeRPC, getImageModels, getSelectedImageModel, getImageModelConfirmed, setSelectedImageModelId, setImageModelConfirmed, type ModelConfig } from '@/bridge'
 import { getMimeFromPath, loadImage, generateImageAsset } from '@/lib/image-gen'
+import { enqueueImageModelSelection } from '@/ai/image-model-store'
 
 export const cropImage = tool({
   description: 'Crop a rectangular region from a project image and save it.',
@@ -64,6 +65,24 @@ export const generateImage = tool({
     reference_image: z.string().optional().describe('Optional reference image res:// path for img2img'),
   }),
   execute: async ({ prompt, output, size, resolution, quality, reference_image }) => {
+    let model: ModelConfig | undefined
+
+    const imageModels = getImageModels()
+    if (imageModels.length > 1 && !getImageModelConfirmed()) {
+      try {
+        const { modelId, persist } = await enqueueImageModelSelection(imageModels)
+        if (persist) {
+          setSelectedImageModelId(modelId)
+          setImageModelConfirmed(true)
+        }
+        model = imageModels.find((m) => m.id === modelId)
+      } catch {
+        return JSON.stringify({ error: 'Image generation cancelled' })
+      }
+    } else {
+      model = getSelectedImageModel() ?? imageModels[0]
+    }
+
     const result = await generateImageAsset({
       prompt,
       output,
@@ -71,6 +90,7 @@ export const generateImage = tool({
       resolution,
       quality,
       referenceImage: reference_image,
+      model,
     })
     if (!result.success) {
       return JSON.stringify({ error: result.error })

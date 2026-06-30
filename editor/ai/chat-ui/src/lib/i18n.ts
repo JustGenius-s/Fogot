@@ -357,6 +357,33 @@ const messages = {
   'gen.draft': { en: 'Generating draft', zh: '生成草稿' },
   'gen.refining': { en: 'Refining details', zh: '细化细节' },
   'gen.almostDone': { en: 'Almost done', zh: '即将完成' },
+
+  // ── Image model selection card ──
+  'imgModel.selectTitle': { en: 'Choose an image model', zh: '选择图像模型' },
+  'imgModel.selectHint': {
+    en: 'Select a model for this generation',
+    zh: '为本次生成选择一个模型',
+  },
+  'imgModel.always': { en: 'Always', zh: '始终' },
+  'imgModel.alwaysHint': {
+    en: 'Remember this choice for future generations',
+    zh: '记住此选择，用于后续生成',
+  },
+  'imgModel.once': { en: 'Once', zh: '仅一次' },
+  'imgModel.onceHint': {
+    en: 'Ask again next time',
+    zh: '下次再次询问',
+  },
+  'imgModel.cancel': { en: 'Cancel', zh: '取消' },
+  'imgModel.cancelled': { en: 'Image generation cancelled', zh: '图像生成已取消' },
+  'imgModel.generating': { en: 'Generating image', zh: '正在生成图像' },
+  'imgModel.defaultModel': { en: 'Default', zh: '默认' },
+  'imgModel.askEveryTime': { en: 'Ask every time', zh: '每次询问' },
+  'imgModel.defaultToggleHint': {
+    en: 'Toggle a model on as the default; turn it off to ask each time.',
+    zh: '开启某个模型作为默认；关闭则改为每次生成时询问。',
+  },
+  'imgModel.noModels': { en: 'No image models configured', zh: '未配置图像模型' },
 } satisfies Record<string, Entry>
 
 export type MessageKey = keyof typeof messages
