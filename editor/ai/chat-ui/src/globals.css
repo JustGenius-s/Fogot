@@ -9,6 +9,7 @@
 :root,
 .dark {
   color-scheme: dark;
+  --fogot-chat-min-width: 300px;
   --background: oklch(0.17 0.01 250);
   --foreground: oklch(0.83 0.01 250);
   --card: oklch(0.20 0.01 250);
@@ -72,6 +73,7 @@
   html, body, #root {
     height: 100%;
     width: 100%;
+    min-width: var(--fogot-chat-min-width);
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
   }

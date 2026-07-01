@@ -258,13 +258,21 @@ const ComposerAction: FC = () => {
     agentId === "image" ||
     (chatModel ? resolveCapabilities(chatModel).vision : false);
   return (
-    <div className="aui-composer-action-wrapper relative flex items-center justify-between">
-      <div className="flex items-center gap-1">
-        <ModelSelector />
-        {agentId === "design" && <AudioModelSelector />}
-        <ModeSelector />
+    <div className="aui-composer-action-wrapper relative flex flex-wrap items-center justify-between gap-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+        <div className="min-w-0 max-w-[12rem]">
+          <ModelSelector />
+        </div>
+        {agentId === "design" && (
+          <div className="min-w-0 max-w-[10rem]">
+            <AudioModelSelector />
+          </div>
+        )}
+        <div className="min-w-0 max-w-[8rem]">
+          <ModeSelector />
+        </div>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="ms-auto flex shrink-0 items-center gap-1">
         <ContextDisplayRing side="top" />
         <AssetPicker />
         {allowAttachments && <ComposerAddAttachment />}
