@@ -8,14 +8,19 @@
  *  3. Complete → collapsible summary with output path or error.
  */
 
-import { useState, useSyncExternalStore, type FC } from 'react'
+import { useState, useSyncExternalStore, type FC, type ReactNode } from 'react'
 import { makeAssistantToolUI } from '@assistant-ui/react'
 import { ImageIcon, CheckIcon, LoaderIcon, ChevronDownIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ProviderLogo } from '@/components/assistant-ui/provider-logo'
 import { cn } from '@/lib/utils'
-import { useTranslation } from '@/lib/i18n'
+import { useTranslation, type MessageKey } from '@/lib/i18n'
+import {
+  getImageResolution,
+  getImageQuality,
+  getImageBackground,
+} from '@/bridge'
 import {
   getPendingImageModelSelection,
   subscribeImageModelSelection,
@@ -27,6 +32,10 @@ import type { ModelConfig } from '@/bridge'
 interface GenerateImageArgs {
   prompt?: string
   output?: string
+  size?: string
+  resolution?: string
+  quality?: string
+  background?: string
 }
 
 interface GenerateImageResult {
@@ -34,6 +43,16 @@ interface GenerateImageResult {
   path?: string
   revised_prompt?: string
   error?: string
+  size?: string
+  resolution?: string
+  quality?: string
+  background?: string
+}
+
+interface ImageGenSettings {
+  resolution?: string
+  quality?: string
+  background?: string
 }
 
 function parseResult(result: unknown): GenerateImageResult | null {
@@ -43,6 +62,95 @@ function parseResult(result: unknown): GenerateImageResult | null {
   } catch {
     return null
   }
+}
+
+function resolveImageSettings(
+  args?: GenerateImageArgs,
+  res?: GenerateImageResult | null,
+): ImageGenSettings {
+  return {
+    resolution: res?.resolution ?? (args?.resolution || getImageResolution() || undefined),
+    quality: res?.quality ?? (args?.quality || getImageQuality() || undefined),
+    background: res?.background ?? (args?.background || getImageBackground() || undefined),
+  }
+}
+
+const RESOLUTION_LABELS: Record<string, string> = {
+  '1k': '1K',
+  '2k': '2K',
+  '4k': '4K',
+}
+
+const QUALITY_KEYS: Record<string, MessageKey> = {
+  low: 'img.low',
+  medium: 'img.medium',
+  high: 'img.high',
+}
+
+const BACKGROUND_KEYS: Record<string, MessageKey> = {
+  transparent: 'img.transparent',
+  opaque: 'img.opaque',
+}
+
+function ImageSettingsSummary({
+  settings,
+  className,
+}: {
+  settings: ImageGenSettings
+  className?: string
+}) {
+  const { t } = useTranslation()
+
+  const resolution = settings.resolution
+    ? (RESOLUTION_LABELS[settings.resolution.toLowerCase()] ?? settings.resolution.toUpperCase())
+    : t('img.auto')
+  const quality = settings.quality
+    ? (QUALITY_KEYS[settings.quality] ? t(QUALITY_KEYS[settings.quality]) : settings.quality)
+    : t('img.auto')
+  const background = settings.background
+    ? (BACKGROUND_KEYS[settings.background] ? t(BACKGROUND_KEYS[settings.background]) : settings.background)
+    : t('img.auto')
+
+  return (
+    <span
+      className={cn(
+        'truncate text-xs text-muted-foreground/70',
+        className,
+      )}
+    >
+      {resolution}
+      <span className="mx-1 text-muted-foreground/30">·</span>
+      {quality}
+      <span className="mx-1 text-muted-foreground/30">·</span>
+      {background}
+    </span>
+  )
+}
+
+function DetailRow({
+  label,
+  children,
+  mono,
+}: {
+  label: string
+  children: ReactNode
+  mono?: boolean
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/50">
+        {label}
+      </span>
+      <span
+        className={cn(
+          'text-xs text-muted-foreground',
+          mono && 'font-mono text-[10px] text-muted-foreground/80 break-all',
+        )}
+      >
+        {children}
+      </span>
+    </div>
+  )
 }
 
 function ModelGlyph({ model, className }: { model: ModelConfig; className?: string }) {
@@ -134,8 +242,9 @@ const ModelSelectionCard: FC<{ models: ModelConfig[] }> = ({ models }) => {
 
 export const GenerateImageToolUI = makeAssistantToolUI<GenerateImageArgs, string>({
   toolName: 'generate_image',
-  render: ({ status, result }) => {
+  render: ({ args, status, result }) => {
     const { t } = useTranslation()
+    const [open, setOpen] = useState(false)
     const isRunning = status?.type === 'running'
     const res = parseResult(result)
 
@@ -149,44 +258,71 @@ export const GenerateImageToolUI = makeAssistantToolUI<GenerateImageArgs, string
     }
 
     if (isRunning) {
+      const settings = resolveImageSettings(args)
       return (
-        <div className="flex items-center gap-2.5 py-1">
+        <div className="flex items-center gap-2.5 py-1 min-w-0">
           <LoaderIcon className="size-3.5 shrink-0 animate-spin text-primary/60" />
-          <span className="text-sm font-medium text-foreground/70">
+          <span className="shrink-0 text-sm font-medium text-foreground/70">
             {t('imgModel.generating')}
           </span>
+          <ImageSettingsSummary settings={settings} />
         </div>
       )
     }
 
     const error = res?.error
-    const path = res?.path
+    const path = res?.path ?? args?.output
+    const prompt = args?.prompt
+    const settings = resolveImageSettings(args, res)
+    const hasDetails = Boolean(prompt || path || error || res?.revised_prompt)
 
     return (
-      <Collapsible>
+      <Collapsible open={open} onOpenChange={setOpen}>
         <CollapsibleTrigger className="group/trigger flex w-full items-center gap-2 py-0.5 text-sm text-muted-foreground transition-colors hover:text-foreground">
           <span className="relative size-3.5 shrink-0">
             <ImageIcon className="size-3.5 absolute inset-0 transition-opacity group-hover/trigger:opacity-0" />
             <ChevronDownIcon
               className={cn(
                 'size-3.5 absolute inset-0 transition-all opacity-0 group-hover/trigger:opacity-100',
-                'group-data-[state=closed]/trigger:-rotate-90',
+                !open && '-rotate-90',
               )}
             />
           </span>
-          <span className="shrink-0">{t('imgModel.generating')}</span>
+          <span className="shrink-0">{t('imgModel.generated')}</span>
           {error ? (
             <span className="shrink-0 text-xs text-destructive/80">{error}</span>
-          ) : path ? (
-            <span className="truncate font-mono text-[10px] text-muted-foreground/70">
-              {path}
-            </span>
-          ) : null}
+          ) : (
+            <ImageSettingsSummary settings={settings} className="min-w-0" />
+          )}
         </CollapsibleTrigger>
-        {res?.revised_prompt && (
-          <CollapsibleContent>
-            <div className="mt-1 pl-5">
-              <span className="text-xs text-muted-foreground/60">{res.revised_prompt}</span>
+        {hasDetails && (
+          <CollapsibleContent
+            className={cn(
+              'overflow-hidden',
+              'data-[state=closed]:animate-collapsible-up',
+              'data-[state=open]:animate-collapsible-down',
+              'data-[state=closed]:fill-mode-forwards',
+            )}
+          >
+            <div className="mt-1 flex flex-col gap-2 pl-5">
+              {prompt && (
+                <DetailRow label={t('imgModel.prompt')}>{prompt}</DetailRow>
+              )}
+              {path && !error && (
+                <DetailRow label={t('imgModel.output')} mono>
+                  {path}
+                </DetailRow>
+              )}
+              {res?.revised_prompt && (
+                <DetailRow label={t('imgModel.revisedPrompt')}>
+                  {res.revised_prompt}
+                </DetailRow>
+              )}
+              {error && (
+                <DetailRow label={t('imgModel.error')}>
+                  <span className="text-destructive/80">{error}</span>
+                </DetailRow>
+              )}
             </div>
           </CollapsibleContent>
         )}

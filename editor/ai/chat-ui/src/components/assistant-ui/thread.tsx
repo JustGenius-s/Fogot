@@ -260,15 +260,15 @@ const ComposerAction: FC = () => {
   return (
     <div className="aui-composer-action-wrapper relative flex flex-wrap items-center justify-between gap-2">
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
-        <div className="min-w-0 max-w-[12rem]">
+        <div className="min-w-0 max-w-48">
           <ModelSelector />
         </div>
         {agentId === "design" && (
-          <div className="min-w-0 max-w-[10rem]">
+          <div className="min-w-0 max-w-40">
             <AudioModelSelector />
           </div>
         )}
-        <div className="min-w-0 max-w-[8rem]">
+        <div className="min-w-0 max-w-32">
           <ModeSelector />
         </div>
       </div>

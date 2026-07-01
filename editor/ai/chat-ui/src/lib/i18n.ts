@@ -377,6 +377,11 @@ const messages = {
   'imgModel.cancel': { en: 'Cancel', zh: '取消' },
   'imgModel.cancelled': { en: 'Image generation cancelled', zh: '图像生成已取消' },
   'imgModel.generating': { en: 'Generating image', zh: '正在生成图像' },
+  'imgModel.generated': { en: 'Generated image', zh: '图像已生成' },
+  'imgModel.prompt': { en: 'Prompt', zh: '提示词' },
+  'imgModel.output': { en: 'Output', zh: '输出路径' },
+  'imgModel.revisedPrompt': { en: 'Revised prompt', zh: '修订提示词' },
+  'imgModel.error': { en: 'Error', zh: '错误' },
   'imgModel.defaultModel': { en: 'Default', zh: '默认' },
   'imgModel.askEveryTime': { en: 'Ask every time', zh: '每次询问' },
   'imgModel.defaultToggleHint': {

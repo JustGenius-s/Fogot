@@ -4,7 +4,7 @@
 
 import { tool } from 'ai'
 import { z } from 'zod'
-import { bridgeRPC, getImageModels, getSelectedImageModel, getImageModelConfirmed, setSelectedImageModelId, setImageModelConfirmed, type ModelConfig } from '@/bridge'
+import { bridgeRPC, getImageModels, getSelectedImageModel, getImageModelConfirmed, getImageSize, getImageResolution, getImageQuality, getImageBackground, setSelectedImageModelId, setImageModelConfirmed, type ModelConfig } from '@/bridge'
 import { getMimeFromPath, loadImage, generateImageAsset } from '@/lib/image-gen'
 import { enqueueImageModelSelection } from '@/ai/image-model-store'
 
@@ -62,10 +62,16 @@ export const generateImage = tool({
     size: z.string().optional().describe('Aspect ratio (e.g. "16:9", "1:1") or pixel size (e.g. "1024x1024")'),
     resolution: z.string().optional().describe('Resolution tier: "1k", "2k", or "4k"'),
     quality: z.string().optional().describe('Quality: "auto", "low", "medium", or "high"'),
+    background: z.string().optional().describe('Background: "transparent", "opaque", or omit for auto'),
     reference_image: z.string().optional().describe('Optional reference image res:// path for img2img'),
   }),
-  execute: async ({ prompt, output, size, resolution, quality, reference_image }) => {
+  execute: async ({ prompt, output, size, resolution, quality, background, reference_image }) => {
     let model: ModelConfig | undefined
+
+    const effectiveSize = size || getImageSize() || undefined
+    const effectiveResolution = resolution || getImageResolution() || undefined
+    const effectiveQuality = quality || getImageQuality() || undefined
+    const effectiveBackground = background || getImageBackground() || undefined
 
     const imageModels = getImageModels()
     if (imageModels.length > 1 && !getImageModelConfirmed()) {
@@ -86,9 +92,10 @@ export const generateImage = tool({
     const result = await generateImageAsset({
       prompt,
       output,
-      size,
-      resolution,
-      quality,
+      size: effectiveSize,
+      resolution: effectiveResolution,
+      quality: effectiveQuality,
+      background: effectiveBackground,
       referenceImage: reference_image,
       model,
     })
@@ -99,6 +106,10 @@ export const generateImage = tool({
       success: true,
       path: result.path,
       revised_prompt: result.revisedPrompt,
+      size: effectiveSize,
+      resolution: effectiveResolution,
+      quality: effectiveQuality,
+      background: effectiveBackground,
     })
   },
 })
