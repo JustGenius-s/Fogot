@@ -19,7 +19,8 @@ import { AudioMode } from '@/components/assets/audio-mode'
 import { allTools, getToolsForAgent } from '@/ai/tools'
 import { resolveCapabilities, resolveModelLimits, VISION_REQUIRED_TOOLS } from '@/lib/model-capabilities'
 import { getDefaultSystemPrompt, getPlanSystemPrompt, getDesignSystemPrompt, getAgent } from '@/ai/agents'
-import { loadDesignTemplate } from '@/lib/designs'
+import { loadDesignBible, describeBibleForPrompt, bibleHasContent, type DesignBible } from '@/lib/design-bible'
+import { loadProjectKinds } from '@/lib/kinds-loader'
 import { createImageChatTransport } from '@/ai/image-transport'
 import { configureDelegateTool } from '@/ai/tools'
 import {
@@ -372,17 +373,21 @@ export default function App() {
 
   const isConfigured = !!(chatModel?.apiKey && chatModel?.apiEndpoint && chatModel?.model)
 
-  // Design mode loads an optional project template (res://.design/_template.md).
-  // When the template changes we re-load so the next agent build picks it up.
-  const [designTemplate, setDesignTemplate] = useState<string | undefined>(undefined)
+  // Design mode loads the project Design Bible (res://.design/_template.md).
+  // The bible's structured summary is injected into the agent prompt so every
+  // design inherits the world / art style / palette / rules. Project kinds
+  // (res://.design/kinds/*.md) are also loaded here so the schema overlay
+  // reflects any user/agent-authored kinds before the transport rebuilds.
+  const [designBible, setDesignBible] = useState<DesignBible | undefined>(undefined)
   useEffect(() => {
     let cancelled = false
     if (agentId === 'design') {
-      loadDesignTemplate().then((t) => {
-        if (!cancelled) setDesignTemplate(t)
+      loadDesignBible().then((b) => {
+        if (!cancelled) setDesignBible(b)
       })
+      loadProjectKinds().catch((e) => console.warn('Failed to load project kinds:', e))
     } else {
-      setDesignTemplate(undefined)
+      setDesignBible(undefined)
     }
     return () => { cancelled = true }
   }, [agentId])
@@ -423,8 +428,12 @@ export default function App() {
       tools = getToolsForAgent([
         'read_file', 'write_design', 'sync_design', 'list_files', 'search_files', 'generate_image',
         'design_voice', 'clone_voice', 'generate_speech', 'generate_music', 'list_voices',
+        'write_kind', 'list_kinds',
+        'scene_list_nodes', 'scene_get_node', 'scene_open', 'scene_set_property',
+        'scene_create_node', 'scene_delete_node', 'scene_reparent_node', 'scene_instance_scene',
+        'scene_call_method', 'scene_get_class_docs',
       ])
-      instructions = getDesignSystemPrompt(designTemplate)
+      instructions = getDesignSystemPrompt(bibleHasContent(designBible) ? describeBibleForPrompt(designBible) : undefined)
       maxSteps = 30
     } else if (agentConfig?.allowedTools) {
       tools = getToolsForAgent(agentConfig.allowedTools)
@@ -523,7 +532,7 @@ export default function App() {
     return wrapTransport(inner, chatModel, {
       supportsVision: caps.vision,
     })
-  }, [chatModelId, agentId, isConfigured, chatModel, designTemplate])
+  }, [chatModelId, agentId, isConfigured, chatModel, designBible])
 
   if (!transport) {
     // Still allow reaching settings (and other views) before any model is

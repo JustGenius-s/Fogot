@@ -693,6 +693,35 @@ export function setAppView(view: AppView) {
   viewListeners.forEach((fn) => fn())
 }
 
+// ─── Pending Prompt Store (cross-view message handoff) ────────────
+
+/**
+ * A message pre-filled by a non-chat view (e.g. the Design sheet's "Refresh
+ * scene" action) to be picked up and sent by the Thread once it mounts. The
+ * Thread clears the value after consuming it.
+ */
+let pendingPrompt: string | null = null
+const pendingPromptListeners = new Set<() => void>()
+
+export function usePendingPrompt(): string | null {
+  return useSyncExternalStore(
+    (listener) => {
+      pendingPromptListeners.add(listener)
+      return () => pendingPromptListeners.delete(listener)
+    },
+    () => pendingPrompt,
+  )
+}
+
+export function getPendingPrompt(): string | null {
+  return pendingPrompt
+}
+
+export function setPendingPrompt(text: string | null): void {
+  pendingPrompt = text
+  pendingPromptListeners.forEach((fn) => fn())
+}
+
 // ─── Active Plan Store ────────────────────────────────────────────
 
 export interface PlanStepState {

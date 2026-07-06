@@ -101,7 +101,50 @@
   background: oklch(1 0 0 / 20%);
 }
 
-/* ─── Spinner (thread-list "working" indicator) ─────────────────── */
+/* ─── Range slider (Design Balance mode) ────────────────────────── */
+/* Filled track uses --fogot-range-fill (% width) and --fogot-range-color. */
+.fogot-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(
+    to right,
+    var(--fogot-range-color, oklch(0.65 0.12 230)) 0%,
+    var(--fogot-range-color, oklch(0.65 0.12 230)) var(--fogot-range-fill, 0%),
+    oklch(1 0 0 / 12%) var(--fogot-range-fill, 0%),
+    oklch(1 0 0 / 12%) 100%
+  );
+}
+.fogot-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: -4px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--fogot-range-color, oklch(0.65 0.12 230));
+  border: 2px solid var(--color-background);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.3);
+  cursor: pointer;
+}
+.fogot-range::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: oklch(1 0 0 / 12%);
+}
+.fogot-range::-moz-range-progress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--fogot-range-color, oklch(0.65 0.12 230));
+}
+.fogot-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--fogot-range-color, oklch(0.65 0.12 230));
+  border: 2px solid var(--color-background);
+  box-shadow: 0 1px 3px oklch(0 0 0 / 0.3);
+  cursor: pointer;
+}
 @keyframes fogot-spinner {
   0%, 100% { opacity: 0.35; }
   50%      { opacity: 1; }

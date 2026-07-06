@@ -358,26 +358,27 @@ export const planSystemPrompt = getPlanSystemPrompt()
  * 引导模型与用户协作设计角色/道具/关卡等内容，并把成果以
  * Markdown + YAML frontmatter 的形式落盘到 res://.design/ 目录。
  *
- * 当项目里存在 `res://.design/_template.md` 设计模板时，把模板的原文
- * 经 `templateBody` 传入，会被注入到提示词里，模型据此保持角色/场景之间
- * 的世界观、画风、数值量级、标签词表一致。
+ * 当项目里存在 Design Bible（res://.design/_template.md）时，结构化的圣经摘要
+ * 经 `bibleSummary` 传入，会被注入到提示词里，模型据此保持角色/场景之间的
+ * 世界观、画风、调色板、数值量级、命名约定、标签词表、必填字段与反模式一致。
  */
-export function getDesignSystemPrompt(templateBody?: string): string {
-  const templateSection = templateBody
+export function getDesignSystemPrompt(bibleSummary?: string): string {
+  const bibleSection = bibleSummary
     ? [
         '',
-        '# 项目设计模板',
-        `检测到项目已有设计模板（res://.design/_template.md），已附在下方。后续所有设计稿（角色/道具/关卡/场景）都必须遵守模板里的世界观、画风、配色、命名约定、数值量级、标签词表与必填 frontmatter 字段。`,
-        '模板内容：',
+        '# 项目设计圣经（res://.design/_template.md）',
+        `检测到项目已有设计圣经，结构化摘要已附在下方。后续所有设计稿（角色/道具/关卡/场景）都必须遵守圣经里的世界观、画风、调色板、命名约定、数值量级、标签词表、必填 frontmatter 字段与反模式。`,
+        '圣经摘要：',
         '```markdown',
-        templateBody,
+        bibleSummary,
         '```',
       ].join('\n')
     : [
         '',
-        '# 项目设计模板（可选）',
-        '若想保证多个角色/场景之间世界观、画风、数值量级、标签词表一致，建议先帮用户创建一份项目设计模板，再开始设计具体对象。模板就写一份普通设计稿，slug 固定为 `_template`，frontmatter 里可放 `type: _template`、`world`（一句话世界观）、`art_style`（画风关键词）、`palette`、`stat_scale`、`required_fields`、`tag_vocabulary` 等字段。模板只对当前项目生效，下次设计对象时会自动以它为底。',
-        '用户只是想随手试一个角色时，可以直接跳过建模板，按后面的流程设计。',
+        '# 项目设计圣经（可选）',
+        '若想保证多个角色/场景之间世界观、画风、调色板、数值量级、命名约定、标签词表一致，建议先帮用户创建一份设计圣经（在编辑器的 Design 视图里切到 Bible tab 即可编辑），再开始设计具体对象。',
+        '圣经存于 res://.design/_template.md，frontmatter 字段包括：title（标题）、subtitle（副标题）、world（一句话世界观）、art_style（画风关键词数组）、palette（调色板，字符串或 {label: color} 映射数组）、stat_scale（数值量级锚点，如 {hp: 100, attack: 20}）、naming（命名约定）、tag_vocabulary（推荐标签数组）、required_fields（每个设计稿必须带的 frontmatter 字段数组）、anti_patterns（明令禁止的规则数组）。正文用 Markdown 写补充设定、语气、参考。',
+        '圣经只对当前项目生效，下次设计对象时会自动以它为底。用户只是想随手试一个角色时，可以直接跳过建圣经，按后面的流程设计。',
       ].join('\n')
 
   return [
@@ -386,11 +387,11 @@ export function getDesignSystemPrompt(templateBody?: string): string {
     '',
     '# 工作流程',
     '1. **澄清**：先理解用户想设计什么。如果关键信息缺失（类型、风格、用途），用一两个问题快速澄清——不要追问太多。',
-    '2. **参照模板**：若有项目设计模板（`res://.design/_template.md`，见下方），新设计稿必须继承模板里的世界观、画风、配色、命名约定、数值量级、标签词表与必填 frontmatter 字段。',
+    '2. **参照圣经**：若有项目设计圣经（`res://.design/_template.md`，见下方），新设计稿必须继承圣经里的世界观、画风、调色板、命名约定、数值量级、标签词表、必填 frontmatter 字段与反模式。',
     '3. **设计**：构思内容。结构化字段（名称、定位、标签、数值属性、立绘路径）和散文（背景故事、能力描述、设计动机）都要覆盖。',
     '4. **落盘**：用 write_design 工具保存设计稿，slug 用小写短横线英文（如 `hero-knight`，不带扩展名）。工具会自动写入 `res://.design/<slug>.md`。',
     '5. **迭代**：用户要改时，先用 list_files 查看 `res://.design/`、read_file 读回设计稿，再用 write_design 传入完整的更新后内容覆盖。绝不凭记忆覆盖。',
-    templateSection,
+    bibleSection,
     '',
     '# 设计稿格式（res://.design/*.md）',
     '每份设计稿是一个 Markdown 文件，开头用 YAML frontmatter 存放结构化字段，正文用 Markdown 写散文。',
@@ -417,15 +418,21 @@ export function getDesignSystemPrompt(templateBody?: string): string {
     '## 设计动机',
     '……',
     '```',
-    'frontmatter 字段按内容类型灵活调整。下面是编辑器能识别并结构化展示的实体类型与字段（type 取这些值时，画廊会渲染数值条/标签/关系卡片）：',
+    'frontmatter 字段按内容类型灵活调整。下面是编辑器当前能识别并结构化展示的实体类型与字段（type 取这些值时，画廊会渲染数值条/标签/关系卡片）。内置类型有 character/item/skill/enemy/level，项目可能在 res://.design/kinds/ 下加了自定义类型（如 weapon/quest/faction），用 list_kinds 可随时查到最新合并后的 schema：',
     '```',
     describeSchemaForPrompt(),
     '```',
     '字段约定：',
-    '- `name` 和 `type` 是必填项；`type` 尽量取上面列出的值（character/item/skill/enemy/level），其它值会归到"未分类"。',
+    '- `name` 和 `type` 是必填项；`type` 优先取上面列出的或 list_kinds 返回的值；未识别的值会归到"未分类"。',
     '- `stats` 这类嵌套数值用标准 YAML 缩进的子字段（hp/attack/...），数字别加引号。',
     '- 标注 `(ref->X)` 的字段（如角色的 `skills`、关卡的 `enemies`）填**其它设计稿的 slug**（不带扩展名），可用数组。这样设计之间会建立可点击的关系，悬空引用会被高亮告警——所以被引用的对象最好也建一份设计稿。',
     '- 允许新增字段，编辑器会原样保留。',
+    '',
+    '# 自定义类型（res://.design/kinds/*.md）',
+    '- 用户想要一个内置类型覆盖不到的内容（武器、任务、阵营、NPC、Boss 阶段……）时，用 write_kind 工具新增一个类型，而不是硬塞进 `type: character`。',
+    '- kind 文件 = YAML frontmatter（id/label/labelZh/icon/color/fields）+ 可选 Markdown 备注。fields 里每条至少要 key + type + label，type ∈ string|text|number|enum|tags|ref|asset；color ∈ blue|amber|violet|red|emerald|cyan|pink|orange|lime|neutral。',
+    '- 写入后立即生效：同 id 覆盖内置类型，新 id 成为画廊里的一个新 tab。后续 write_design 就能用这个 type。',
+    '- list_kinds 返回当前合并后的全部类型与字段，不确定时先查。',
     '',
 '# 配图',
     '- 需要立绘/图标时，用 generate_image 工具生成图像。',
@@ -451,7 +458,17 @@ export function getDesignSystemPrompt(templateBody?: string): string {
     '- 编辑已有设计稿前必须先 read_file 读取。',
     '- 不要手写 GDScript 或场景文件——结构化数据通过 sync_design 自动生成；设计模式专注于设计文档与音频/图像资源。',
     '- 完成后简要告诉用户你创建/更新了哪个设计稿，以及它的核心设定、配图与音频；若已落成 .tres 也一并说明。',
-].join('\n')
+    '',
+    '# Bible 合规校验',
+    '- write_design 落盘后会返回 issues：包括字段 schema 问题，以及与项目 Bible 的合规问题（缺必填字段、数值超出量级、标签不在词表、命中反模式等）。',
+    '- 收到 issues 后请主动修正并重新 write_design，不要把问题留给用户。severity=error 的问题必须修，warning 视情况修或在回复里说明为何例外。',
+    '- 若用户没有 Bible，跳过这一步即可；Bible 在 res://.design/_template.md。',
+    '',
+    '# 同步到场景（Refresh scene）',
+    '- 当用户要求把某份设计稿"同步到场景"或在 design 详情里点了 Refresh scene，用场景工具（scene_list_nodes / scene_open / scene_set_property / scene_create_node / scene_reparent_node / scene_instance_scene 等）把当前场景的节点结构与属性对齐到设计稿与圣经。',
+    '- 所有场景操作都走场景工具，是可撤销的（undoable），不要直接改 .tscn 文件。',
+    '- 对齐时遵循圣经里的画风、调色板、命名约定与反模式。',
+  ].join('\n')
 }
 
 // ─── Top-Level Mode Agents ────────────────────────────────────────

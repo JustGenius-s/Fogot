@@ -9,8 +9,13 @@
  *   - (future) typed .tres export
  *
  * Designs stay genre-agnostic: each `DesignKind` declares its own fields, so
- * adding a new content type is a data-only change here. A `generic` kind is the
+ * adding a new content type is a data-only change. A `generic` kind is the
  * fallback for any `type` not explicitly registered.
+ *
+ * Kinds come from two layers:
+ *   1. Built-in defaults (BUILTIN_KINDS below) — always available.
+ *   2. Project kinds loaded from `res://.design/kinds/*.md` — override built-ins
+ *      by id and can introduce new ids. See `kinds-loader.ts` / `setProjectKinds`.
  */
 
 import type { DesignMeta } from '@/lib/designs'
@@ -51,6 +56,22 @@ export interface FieldDef {
   fields?: FieldDef[]
 }
 
+/**
+ * Accent color bucket for a kind. Maps to a fixed hue in {@link KIND_HUE} so
+ * the palette stays visually consistent; user-defined kinds pick a bucket.
+ */
+export type KindColor =
+  | 'blue'
+  | 'amber'
+  | 'violet'
+  | 'red'
+  | 'emerald'
+  | 'cyan'
+  | 'pink'
+  | 'orange'
+  | 'lime'
+  | 'neutral'
+
 export interface DesignKind {
   /** `type` value in frontmatter (e.g. "character"). */
   id: string
@@ -59,8 +80,55 @@ export interface DesignKind {
   labelZh: string
   /** Lucide icon name hint (resolved by the UI). */
   icon?: string
+  /** Accent color bucket (defaults to a sensible value per id). */
+  color?: KindColor
   /** Type-specific fields (base fields are added automatically). */
   fields: FieldDef[]
+}
+
+// ─── Kind color palette ───────────────────────────────────────────
+
+const KIND_HUE: Record<KindColor, number> = {
+  blue: 230,
+  amber: 70,
+  violet: 295,
+  red: 25,
+  emerald: 155,
+  cyan: 195,
+  pink: 350,
+  orange: 55,
+  lime: 130,
+  neutral: 250,
+}
+
+const DEFAULT_KIND_COLOR: Record<string, KindColor> = {
+  character: 'blue',
+  item: 'amber',
+  skill: 'violet',
+  enemy: 'red',
+  level: 'emerald',
+  generic: 'neutral',
+}
+
+/** Hue (0–360) for a kind, falling back to neutral. */
+export function kindHue(kind: DesignKind): number {
+  const c = kind.color ?? DEFAULT_KIND_COLOR[kind.id] ?? 'neutral'
+  return KIND_HUE[c] ?? KIND_HUE.neutral
+}
+
+/** Main accent color as an oklch string. */
+export function kindColor(kind: DesignKind, lightness = 0.7, chroma = 0.13): string {
+  return `oklch(${lightness} ${chroma} ${kindHue(kind)})`
+}
+
+/** Tinted background (low-alpha accent) for chips, badges, section headers. */
+export function kindTint(kind: DesignKind, alpha = 0.14): string {
+  return `oklch(0.7 0.13 ${kindHue(kind)} / ${alpha})`
+}
+
+/** CSS custom property object to scope a kind hue to a subtree. */
+export function kindHueVar(kind: DesignKind): Record<string, string | number> {
+  return { '--kind-hue': String(kindHue(kind)) }
 }
 
 // ─── Base fields shared by every kind ─────────────────────────────
@@ -71,14 +139,15 @@ const BASE_FIELDS: FieldDef[] = [
   { key: 'tags', type: 'tags', label: 'Tags', labelZh: '标签', multiple: true },
 ]
 
-// ─── Kind registry ────────────────────────────────────────────────
+// ─── Built-in kind registry (project kinds override by id) ────────
 
-const KINDS: DesignKind[] = [
+const BUILTIN_KINDS: DesignKind[] = [
   {
     id: 'character',
     label: 'Character',
     labelZh: '角色',
     icon: 'User',
+    color: 'blue',
     fields: [
       { key: 'role', type: 'string', label: 'Role', labelZh: '定位' },
       { key: 'portrait', type: 'asset', asset: 'image', label: 'Portrait', labelZh: '立绘' },
@@ -105,6 +174,7 @@ const KINDS: DesignKind[] = [
     label: 'Item',
     labelZh: '道具',
     icon: 'Package',
+    color: 'amber',
     fields: [
       {
         key: 'rarity',
@@ -122,6 +192,7 @@ const KINDS: DesignKind[] = [
     label: 'Skill',
     labelZh: '技能',
     icon: 'Sparkles',
+    color: 'violet',
     fields: [
       { key: 'icon', type: 'asset', asset: 'image', label: 'Icon', labelZh: '图标' },
       { key: 'cooldown', type: 'number', label: 'Cooldown', labelZh: '冷却', max: 60 },
@@ -134,6 +205,7 @@ const KINDS: DesignKind[] = [
     label: 'Enemy',
     labelZh: '敌人',
     icon: 'Skull',
+    color: 'red',
     fields: [
       { key: 'portrait', type: 'asset', asset: 'image', label: 'Portrait', labelZh: '立绘' },
       {
@@ -155,6 +227,7 @@ const KINDS: DesignKind[] = [
     label: 'Level',
     labelZh: '关卡',
     icon: 'Map',
+    color: 'emerald',
     fields: [
       { key: 'theme', type: 'string', label: 'Theme', labelZh: '主题' },
       {
@@ -176,21 +249,56 @@ const GENERIC_KIND: DesignKind = {
   label: 'Design',
   labelZh: '设计',
   icon: 'PencilRuler',
+  color: 'neutral',
   fields: [],
 }
 
-const KIND_BY_ID = new Map<string, DesignKind>(KINDS.map((k) => [k.id, k]))
+// ─── Project kind overlay ─────────────────────────────────────────
+
+/**
+ * Kinds authored by the project under `res://.design/kinds/*.md`. Project kinds
+ * override built-ins by id and can introduce new ids. Mutated at runtime by
+ * `setProjectKinds` (called from App on design-mode activation).
+ */
+let projectKinds: Map<string, DesignKind> = new Map()
+const projectKindListeners = new Set<() => void>()
+
+/** Replace the project kind overlay. Triggers listeners (e.g. gallery reload). */
+export function setProjectKinds(kinds: DesignKind[]): void {
+  projectKinds = new Map(kinds.map((k) => [k.id, k]))
+  projectKindListeners.forEach((fn) => fn())
+}
+
+/** Clear the project kind overlay (back to built-ins only). */
+export function clearProjectKinds(): void {
+  projectKinds = new Map()
+  projectKindListeners.forEach((fn) => fn())
+}
+
+/** Subscribe to project kind changes. Returns an unsubscribe function. */
+export function onProjectKindsChanged(listener: () => void): () => void {
+  projectKindListeners.add(listener)
+  return () => projectKindListeners.delete(listener)
+}
 
 // ─── Public API ───────────────────────────────────────────────────
 
-/** All registered kinds (excluding the generic fallback). */
+/** All registered kinds: built-ins + project kinds (project overrides by id), excluding the generic fallback. */
 export function allKinds(): DesignKind[] {
-  return KINDS
+  const merged = new Map<string, DesignKind>()
+  for (const k of BUILTIN_KINDS) merged.set(k.id, k)
+  for (const [id, k] of projectKinds) merged.set(id, k)
+  return Array.from(merged.values())
 }
 
 /** Resolve a frontmatter `type` to its kind, falling back to `generic`. */
 export function getKind(type?: string): DesignKind {
-  if (type && KIND_BY_ID.has(type)) return KIND_BY_ID.get(type)!
+  if (type) {
+    const p = projectKinds.get(type)
+    if (p) return p
+    const builtin = BUILTIN_KINDS.find((k) => k.id === type)
+    if (builtin) return builtin
+  }
   return GENERIC_KIND
 }
 
@@ -316,7 +424,7 @@ export function generateKindScript(kind: DesignKind): string {
  */
 export function describeSchemaForPrompt(): string {
   const lines: string[] = []
-  for (const kind of KINDS) {
+  for (const kind of allKinds()) {
     const parts = kind.fields.map((f) => {
       if (f.fields) return `${f.key}{${f.fields.map((s) => s.key).join(',')}}`
       if (f.type === 'ref') return `${f.key}(ref->${f.refKind})`

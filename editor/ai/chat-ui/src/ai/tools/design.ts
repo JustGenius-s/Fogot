@@ -11,6 +11,7 @@ import { z } from 'zod'
 import { bridgeRPC } from '@/bridge'
 import { DESIGN_DIR, parseDesign, syncDesignToResource } from '@/lib/designs'
 import { validateDesign } from '@/lib/design-schema'
+import { loadDesignBible, validateAgainstBible, bibleHasContent } from '@/lib/design-bible'
 
 /** Old content before a design write, keyed by path (for inline diff/card). */
 export const designOldContentCache = new Map<string, string>()
@@ -55,11 +56,28 @@ export const writeDesign = tool({
     // Validate frontmatter against the kind schema. Issues are advisory only —
     // the write already succeeded; we surface them so the model can self-correct.
     const { meta } = parseDesign(content)
-    const issues = validateDesign(meta)
+    const schemaIssues = validateDesign(meta)
+    // Also validate against the project Design Bible (required fields, stat
+    // scale, tag vocabulary, naming, anti-patterns). Loaded fresh on each call
+    // so the model picks up bible edits made mid-session.
+    let bibleIssues: { cluster: string; severity: string; message: string }[] = []
+    try {
+      const bible = await loadDesignBible()
+      if (bibleHasContent(bible)) {
+        bibleIssues = validateAgainstBible(meta, bible).map((i) => ({
+          cluster: i.cluster,
+          severity: i.severity,
+          message: i.message,
+        }))
+      }
+    } catch {
+      /* bible load failed — skip bible validation */
+    }
+    const allIssues = [...schemaIssues.map((i) => ({ field: i.field, message: i.message, severity: i.severity })), ...bibleIssues]
     return JSON.stringify({
       success: true,
       path,
-      ...(issues.length ? { issues } : {}),
+      ...(allIssues.length ? { issues: allIssues } : {}),
     })
   },
 })

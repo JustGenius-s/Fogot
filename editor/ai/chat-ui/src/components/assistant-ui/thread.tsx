@@ -46,6 +46,7 @@ import {
   SuggestionPrimitive,
   ThreadListPrimitive,
   ThreadPrimitive,
+  useAui,
   useAuiState,
 } from "@assistant-ui/react";
 import { Popover } from "radix-ui";
@@ -68,8 +69,8 @@ import {
   RefreshCwIcon,
   SquareIcon,
 } from "lucide-react";
-import { useState, type FC } from "react";
-import { useAgentId, setAppView, useConfig, useSelectedChatModelId, getSelectedChatModel } from "@/bridge";
+import { useEffect, useState, type FC } from "react";
+import { useAgentId, setAppView, useConfig, useSelectedChatModelId, getSelectedChatModel, usePendingPrompt, setPendingPrompt } from "@/bridge";
 import { resolveCapabilities } from "@/lib/model-capabilities";
 import { useTranslation } from "@/lib/i18n";
 
@@ -134,6 +135,7 @@ export const Thread: FC = () => {
   return (
     <div className="flex flex-col h-full">
       <ThreadHeader />
+      <PendingPromptSender />
       <ThreadPrimitive.Root
         className="aui-root aui-thread-root @container flex flex-1 min-h-0 flex-col bg-background"
         style={{
@@ -170,6 +172,31 @@ export const Thread: FC = () => {
       </ThreadPrimitive.Root>
     </div>
   );
+};
+
+// ─── Pending Prompt Sender ────────────────────────────────────────
+// Picks up a prompt pre-filled by another view (e.g. the Design sheet's
+// "Refresh scene" action) and sends it through the composer. Renders nothing.
+
+const PendingPromptSender: FC = () => {
+  const aui = useAui();
+  const pending = usePendingPrompt();
+  useEffect(() => {
+    if (!pending) return;
+    const timer = setTimeout(() => {
+      try {
+        const composer = aui.thread().composer();
+        composer.setText(pending);
+        composer.send();
+      } catch (e) {
+        console.warn("Pending prompt send failed:", e);
+      } finally {
+        setPendingPrompt(null);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [pending, aui]);
+  return null;
 };
 
 const ThreadMessage: FC = () => {

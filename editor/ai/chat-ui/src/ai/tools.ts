@@ -78,6 +78,12 @@ export {
 } from './tools/design'
 
 export {
+  writeKind,
+  listKinds,
+  kindPathForId,
+} from './tools/kinds'
+
+export {
   designVoiceTool,
   cloneVoiceTool,
   generateSpeechTool,
@@ -156,6 +162,11 @@ import {
 } from './tools/design'
 
 import {
+  writeKind,
+  listKinds,
+} from './tools/kinds'
+
+import {
   designVoiceTool,
   cloneVoiceTool,
   generateSpeechTool,
@@ -221,6 +232,8 @@ export const allTools = {
   // Design mode
   write_design: writeDesign,
   sync_design: syncDesign,
+  write_kind: writeKind,
+  list_kinds: listKinds,
 
   // Audio mode
   design_voice: designVoiceTool,

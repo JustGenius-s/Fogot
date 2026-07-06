@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState, type FC } from 'react'
 import {
   RefreshCwIcon,
-  PencilRulerIcon,
   FileQuestionIcon,
   SearchIcon,
   LayoutGridIcon,
@@ -20,9 +19,11 @@ import {
   designImagePath,
   designTitle,
 } from '@/lib/designs'
-import { getKind, kindLabel } from '@/lib/design-schema'
+import { getKind, kindColor, kindLabel, kindTint } from '@/lib/design-schema'
 import { useTranslation, useLocale } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
+import { useProjectKindsVersion } from '@/components/assets/use-kinds'
+import { resolveKindIcon } from '@/components/assets/kind-icons'
 
 type ViewMode = 'list' | 'grid'
 
@@ -31,6 +32,9 @@ export const DesignGallery: FC<{ dir?: string }> = ({ dir = DESIGN_DIR }) => {
   const { t } = useTranslation()
   const locale = useLocale()
   const { designs, exists, loading, error, reload } = useDesigns(dir)
+  // Re-render on project kind changes so type-tab labels and card accents stay
+  // in sync with res://.design/kinds/*.md edits.
+  useProjectKindsVersion()
 
   const [previewSlug, setPreviewSlug] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<string>('__all__')
@@ -262,27 +266,36 @@ const DesignListRow: FC<{
   const image = designImagePath(design.meta)
   const tags = Array.isArray(design.meta.tags) ? design.meta.tags : []
   const type = typeof design.meta.type === 'string' ? design.meta.type : undefined
+  const kind = getKind(type)
+  const KindIcon = resolveKindIcon(kind.icon)
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group flex items-center gap-3 overflow-hidden rounded-lg border border-border/60 bg-card p-2 text-left transition-all hover:border-border hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      className="group relative flex items-center gap-3 overflow-hidden rounded-xl border border-border/60 bg-card p-2.5 text-left transition-all hover:border-border hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <div className="size-14 shrink-0 overflow-hidden rounded-md border border-border/50 bg-muted">
+      <span
+        className="absolute inset-y-0 left-0 w-0.5 opacity-70 transition-opacity group-hover:opacity-100"
+        style={{ background: kindColor(kind, 0.65, 0.13) }}
+      />
+      <div className="size-14 shrink-0 overflow-hidden rounded-lg border border-border/50 bg-muted">
         {image ? (
           <AssetThumb path={image} className="size-full" />
         ) : (
-          <div className="flex size-full items-center justify-center">
-            <PencilRulerIcon className="size-5 text-muted-foreground/40" />
+          <div className="flex size-full items-center justify-center" style={{ background: kindTint(kind, 0.1) }}>
+            <KindIcon className="size-5" style={{ color: kindColor(kind, 0.7, 0.1) }} />
           </div>
         )}
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex items-baseline gap-2">
-          <span className="truncate text-sm font-medium">{designTitle(design)}</span>
+          <span className="truncate text-sm font-semibold">{designTitle(design)}</span>
           {type && (
-            <span className="shrink-0 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-              {kindLabel(getKind(type), locale)}
+            <span
+              className="shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-medium"
+              style={{ background: kindTint(kind, 0.18), color: kindColor(kind, 0.85, 0.1) }}
+            >
+              {kindLabel(kind, locale)}
             </span>
           )}
           {dangling && (
@@ -309,27 +322,37 @@ const DesignGridCard: FC<{ design: DesignEntry; dangling: boolean; onClick: () =
   onClick,
 }) => {
   const image = designImagePath(design.meta)
+  const type = typeof design.meta.type === 'string' ? design.meta.type : undefined
+  const kind = getKind(type)
+  const KindIcon = resolveKindIcon(kind.icon)
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group flex flex-col overflow-hidden rounded-lg border border-border/60 bg-card text-left transition-all hover:border-border hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      className="group flex flex-col overflow-hidden rounded-xl border border-border/60 bg-card text-left transition-all hover:border-border hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="relative aspect-square w-full overflow-hidden bg-muted">
         {image ? (
-          <AssetThumb path={image} className="size-full [&_img]:object-cover" />
+          <AssetThumb path={image} className="size-full [&_img]:object-cover transition-transform duration-300 group-hover:scale-105" />
         ) : (
-          <div className="flex size-full items-center justify-center">
-            <PencilRulerIcon className="size-6 text-muted-foreground/40" />
+          <div
+            className="flex size-full items-center justify-center"
+            style={{ background: kindTint(kind, 0.12) }}
+          >
+            <KindIcon className="size-7" style={{ color: kindColor(kind, 0.7, 0.1) }} />
           </div>
         )}
+        <span
+          className="absolute inset-x-0 top-0 h-1 opacity-80"
+          style={{ background: kindColor(kind, 0.65, 0.13) }}
+        />
         {dangling && (
-          <span className="absolute right-1 top-1 rounded-full bg-background/80 p-0.5">
+          <span className="absolute right-1.5 top-2 rounded-full bg-background/85 p-0.5 backdrop-blur-sm">
             <AlertTriangleIcon className="size-3 text-amber-500" />
           </span>
         )}
       </div>
-      <span className="truncate px-2 py-1.5 text-xs font-medium">{designTitle(design)}</span>
+      <span className="truncate px-2.5 py-2 text-xs font-semibold">{designTitle(design)}</span>
     </button>
   )
 }

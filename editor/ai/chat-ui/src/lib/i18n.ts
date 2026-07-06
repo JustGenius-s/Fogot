@@ -327,6 +327,67 @@ const messages = {
   'design.synced': { en: 'Synced', zh: '已同步' },
   'design.syncFailed': { en: 'Sync failed', zh: '同步失败' },
 
+  // ── Design Bible ──
+  'design.bible': { en: 'Design Bible', zh: '设计圣经' },
+  'design.bibleEmpty': { en: 'No Design Bible yet', zh: '还没有设计圣经' },
+  'design.bibleEmptyHint': {
+    en: 'The Bible is the contract that keeps every design on-brand: world, look, numbers, voice & rules.',
+    zh: '圣经是让所有设计保持一致的契约：世界观、视觉、数值、语气与规则。',
+  },
+  'design.bibleCreate': { en: 'Create from example', zh: '从示例创建' },
+  'design.bibleCreateBlank': { en: 'Start blank', zh: '从空白开始' },
+  'design.bibleUntitled': { en: 'Untitled Bible', zh: '未命名圣经' },
+  'design.bibleEdit': { en: 'Edit', zh: '编辑' },
+  'design.bibleDelete': { en: 'Delete Bible', zh: '删除圣经' },
+  'design.bibleSave': { en: 'Save', zh: '保存' },
+  'design.bibleCancel': { en: 'Cancel', zh: '取消' },
+  // Cluster titles
+  'design.bibleC.world': { en: 'World', zh: '世界观' },
+  'design.bibleC.look': { en: 'Look', zh: '视觉' },
+  'design.bibleC.numbers': { en: 'Numbers', zh: '数值' },
+  'design.bibleC.voice': { en: 'Voice & Rules', zh: '语气与规则' },
+  // Field labels
+  'design.bible.title': { en: 'Title', zh: '标题' },
+  'design.bible.logline': { en: 'Logline', zh: '一句话简介' },
+  'design.bible.world': { en: 'World & tone notes', zh: '世界设定与语气' },
+  'design.bible.artStyle': { en: 'Art style keywords', zh: '画风关键词' },
+  'design.bible.palette': { en: 'Palette', zh: '调色板' },
+  'design.bible.statScale': { en: 'Stat scale anchors', zh: '数值量级锚点' },
+  'design.bible.naming': { en: 'Naming conventions', zh: '命名约定' },
+  'design.bible.tagVocabulary': { en: 'Tag vocabulary', zh: '标签词表' },
+  'design.bible.requiredFields': { en: 'Required frontmatter fields', zh: '必填字段' },
+  'design.bible.antiPatterns': { en: 'Anti-patterns', zh: '反模式' },
+  // Placeholders / hints
+  'design.bible.titlePh': { en: 'e.g. Aetheria Chronicles', zh: '例：以太编年史' },
+  'design.bible.loglinePh': { en: 'One-sentence pitch', zh: '一句话标语' },
+  'design.bible.worldPh': { en: 'Markdown — world setup, tone, era, references…', zh: 'Markdown — 世界设定、语气、时代、参考……' },
+  'design.bible.artStylePh': { en: 'painterly, soft cel-shaded, warm tones', zh: '手绘风, 柔和赛璐璐, 暖色调' },
+  'design.bible.namingPh': { en: 'Western fantasy, two-syllable, avoids apostrophes', zh: '西式奇幻，双音节，不用撇号' },
+  'design.bible.tagVocabPh': { en: 'melee, tank, ranged, boss', zh: '近战, 坦克, 远程, Boss' },
+  'design.bible.requiredFieldsPh': { en: 'name, type, portrait, tags', zh: 'name, type, portrait, tags' },
+  'design.bible.antiPatternsPh': { en: 'No modern slang in dialogue', zh: '台词不要用现代俚语' },
+  // Actions
+  'design.bible.addColor': { en: 'Add color', zh: '添加颜色' },
+  'design.bible.addRule': { en: 'Add rule', zh: '添加规则' },
+  'design.bible.addStat': { en: 'Add stat anchor', zh: '添加数值锚点' },
+  'design.bible.commaHint': { en: 'Comma-separated', zh: '逗号分隔' },
+  'design.bible.emptySection': { en: 'Nothing here yet — click to add', zh: '这里还空着 — 点击添加' },
+
+  // ── Design tabs ──
+  'design.tabGallery': { en: 'Gallery', zh: '画廊' },
+  'design.tabBible': { en: 'Bible', zh: '圣经' },
+  'design.balance': { en: 'Balance', zh: '数值微调' },
+  'design.balanceHint': { en: 'Drag sliders to tweak stats; changes save automatically', zh: '拖动滑块微调数值，改动自动保存' },
+  'design.refreshScene': { en: 'Refresh scene', zh: '同步到场景' },
+  'design.refreshSceneHint': {
+    en: 'Open the current scene and align its nodes with this design + the Bible',
+    zh: '打开当前场景，按这份设计与圣经调整场景节点',
+  },
+  'design.bibleCheck': { en: 'Bible check', zh: 'Bible 校验' },
+  'design.bibleCheckOk': { en: 'Follows Bible', zh: '符合圣经' },
+  'design.bibleCheckNoBible': { en: 'No Bible', zh: '无圣经' },
+  'design.bibleCheckIssues': { en: '{count} issues', zh: '{count} 项问题' },
+
   // ── Assets ──
   'assets.title': { en: 'Assets', zh: '资源' },
   'assets.assetsCount': { en: '{count} assets', zh: '{count} 个资源' },
