@@ -16,13 +16,11 @@
 #include "scene/main/node.h"
 #include "scene/main/scene_tree.h"
 
-
 void normalize_project_path(String &p_path) {
 	if (!p_path.begins_with("res://") && !p_path.is_absolute_path()) {
 		p_path = "res://" + p_path;
 	}
 }
-
 
 String strip_bbcode(const String &p_text) {
 	String out;
@@ -47,7 +45,6 @@ String strip_bbcode(const String &p_text) {
 	return out;
 }
 
-
 String format_method_sig(const DocData::MethodDoc &p_method) {
 	String sig;
 	if (!p_method.return_type.is_empty()) {
@@ -70,8 +67,6 @@ String format_method_sig(const DocData::MethodDoc &p_method) {
 	}
 	return sig;
 }
-
-
 
 /// Build a JSON-safe representation of a Variant value.
 /// Basic types are used directly; complex types are stringified.
@@ -584,4 +579,16 @@ void set_owner_recursive(Node *p_node, Node *p_owner) {
 	for (int i = 0; i < p_node->get_child_count(); i++) {
 		set_owner_recursive(p_node->get_child(i), p_owner);
 	}
+}
+
+Error save_current_scene() {
+	EditorInterface *ei = EditorInterface::get_singleton();
+	if (!ei) {
+		return ERR_CANT_CREATE;
+	}
+	Node *root = ei->get_edited_scene_root();
+	if (!root || root->get_scene_file_path().is_empty()) {
+		return ERR_CANT_CREATE;
+	}
+	return ei->save_scene();
 }

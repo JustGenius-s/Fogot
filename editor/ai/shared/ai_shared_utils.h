@@ -8,10 +8,11 @@
 #pragma once
 
 #include "core/doc_data.h"
+#include "core/io/error_list.h"
 #include "core/math/transform_2d.h"
+#include "core/string/ustring.h"
 #include "core/variant/dictionary.h"
 #include "core/variant/variant.h"
-#include "core/string/ustring.h"
 
 class Bone2D;
 class Node;
@@ -91,3 +92,10 @@ String call_method_from_json(Object *p_obj, const String &p_method, const String
 /// Recursively set the owner of p_node and all its descendants to p_owner.
 /// Useful after adding a subtree to ensure it serializes with the scene.
 void set_owner_recursive(Node *p_node, Node *p_owner);
+
+/// Persist the currently edited scene to its .tscn file on disk.
+/// Called by every scene-mutating AI tool right after its undo/redo commit so
+/// that subsequent read tools and scene_run see the new state without relying
+/// on the user pressing Ctrl+S. Returns OK on success, ERR_CANT_CREATE if no
+/// scene is open or it has never been saved (no file path assigned).
+Error save_current_scene();

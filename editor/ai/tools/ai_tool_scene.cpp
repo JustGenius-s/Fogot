@@ -5,9 +5,8 @@
 /*                          FOGOT ENGINE                                  */
 /**************************************************************************/
 
-#include "ai_tool_rpc.h"
-#include "scene/2d/skeleton_2d.h"
 #include "../shared/ai_shared_utils.h"
+#include "ai_tool_rpc.h"
 
 #include "core/io/file_access.h"
 #include "core/io/json.h"
@@ -16,6 +15,7 @@
 #include "editor/doc/editor_help.h"
 #include "editor/editor_interface.h"
 #include "editor/editor_undo_redo_manager.h"
+#include "scene/2d/skeleton_2d.h"
 #include "scene/resources/packed_scene.h"
 
 // --- scene_list_nodes ---
@@ -139,6 +139,8 @@ String AIToolRPC::scene_create_node(const Dictionary &p_args) {
 		new_node->set_owner(scene_root);
 	}
 
+	save_current_scene();
+
 	return "OK: Created " + node_type + " at " + String(new_node->get_path()).trim_prefix("./");
 }
 
@@ -165,6 +167,8 @@ String AIToolRPC::scene_delete_node(const Dictionary &p_args) {
 	undo->add_undo_method(parent, "add_child", node);
 	undo->add_undo_reference(node);
 	undo->commit_action();
+
+	save_current_scene();
 
 	return "OK: Deleted " + node_path_str;
 }
@@ -213,6 +217,8 @@ String AIToolRPC::scene_set_property(const Dictionary &p_args) {
 	undo->add_undo_property(node, property, old_value);
 	undo->commit_action();
 
+	save_current_scene();
+
 	return "OK: Set " + path + "." + property + " = " + String(parsed);
 }
 
@@ -253,6 +259,8 @@ String AIToolRPC::scene_reparent_node(const Dictionary &p_args) {
 	undo->add_undo_method(old_parent, "add_child", node);
 	undo->commit_action();
 
+	save_current_scene();
+
 	return "OK: Reparented " + path + " to " + new_parent_path;
 }
 
@@ -292,6 +300,8 @@ String AIToolRPC::scene_move_child(const Dictionary &p_args) {
 	undo->add_do_method(parent, "move_child", node, to_position);
 	undo->add_undo_method(parent, "move_child", node, current_index);
 	undo->commit_action();
+
+	save_current_scene();
 
 	return "OK: Moved " + path + " to index " + itos(to_position);
 }
@@ -502,6 +512,8 @@ String AIToolRPC::scene_set_bone2d_rest(const Dictionary &p_args) {
 	undo->add_undo_method(bone, "set_rest", old_rest);
 	undo->commit_action();
 
+	save_current_scene();
+
 	return "OK: Set rest for Bone2D '" + bone->get_name() + "'.";
 }
 
@@ -527,6 +539,8 @@ String AIToolRPC::scene_call_method(const Dictionary &p_args) {
 	if (!call_error.is_empty()) {
 		return call_error;
 	}
+
+	save_current_scene();
 
 	Dictionary result;
 	result["path"] = path;
@@ -582,6 +596,8 @@ String AIToolRPC::scene_connect_signal(const Dictionary &p_args) {
 	undo->add_do_method(source, "connect", signal_name, Callable(target, method_name));
 	undo->add_undo_method(source, "disconnect", signal_name, Callable(target, method_name));
 	undo->commit_action();
+
+	save_current_scene();
 
 	return "OK: Connected " + source_path + "." + signal_name + " -> " + target_path + "." + method_name;
 }
@@ -644,6 +660,8 @@ String AIToolRPC::scene_instance_scene(const Dictionary &p_args) {
 
 	// Store the scene file reference so it saves as an instance.
 	instance->set_scene_file_path(scene_path);
+
+	save_current_scene();
 
 	return "OK: Instanced '" + scene_path + "' as " + String(instance->get_path()).trim_prefix("./");
 }
