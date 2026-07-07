@@ -6,7 +6,6 @@
 import type {
   RemoteThreadListAdapter,
   TextMessagePart,
-  ThreadHistoryAdapter,
   ThreadMessage,
 } from '@assistant-ui/react'
 
@@ -14,14 +13,25 @@ import type {
 
 const THREADS_KEY = 'fogot-threads'
 const MESSAGES_PREFIX = 'fogot-msgs-'
+const SUBAGENT_PREFIX = 'fogot-subagent-'
 
 // ─── Internal Types ───────────────────────────────────────────────
 
-interface StoredThread {
+export interface StoredThread {
   id: string
   title: string
   status: 'regular' | 'archived'
   createdAt: number
+  /** Parent thread ID — set for sub-agent child threads. */
+  parentID?: string
+  /** Agent type for sub-agent threads (explore, coder, etc.). */
+  agentType?: string
+}
+
+export interface StoredSubAgentData {
+  agentType: string
+  task: string
+  parts: unknown[]
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────
@@ -35,7 +45,7 @@ function loadThreads(): StoredThread[] {
   }
 }
 
-function saveThreads(threads: StoredThread[]) {
+export function saveThreads(threads: StoredThread[]) {
   localStorage.setItem(THREADS_KEY, JSON.stringify(threads))
 }
 
@@ -52,12 +62,81 @@ function saveMessages(threadId: string, messages: ThreadMessage[]) {
   localStorage.setItem(MESSAGES_PREFIX + threadId, JSON.stringify(messages))
 }
 
-function deleteMessages(threadId: string) {
+export function deleteMessages(threadId: string) {
   localStorage.removeItem(MESSAGES_PREFIX + threadId)
+  localStorage.removeItem(SUBAGENT_PREFIX + threadId)
 }
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8)
+}
+
+// ─── Sub-agent thread helpers ─────────────────────────────────────
+
+const subAgentListeners = new Set<() => void>()
+let _subAgentVersion = 0
+
+/** In-memory cache of sub-agent parts data — avoids localStorage quota. */
+const subAgentDataCache = new Map<string, StoredSubAgentData>()
+
+function notifySubAgentChange() {
+  _subAgentVersion++
+  subAgentListeners.forEach((fn) => fn())
+}
+
+export function getSubAgentVersion(): number {
+  return _subAgentVersion
+}
+
+export function subscribeSubAgentChanges(listener: () => void): () => void {
+  subAgentListeners.add(listener)
+  return () => subAgentListeners.delete(listener)
+}
+
+export function createSubAgentThread(
+  parentID: string,
+  agentType: string,
+  task: string,
+  parts: unknown[],
+): string {
+  const id = 'sa-' + generateId()
+  const threads = loadThreads()
+  threads.push({
+    id,
+    title: task.slice(0, 50) + (task.length > 50 ? '...' : ''),
+    status: 'regular',
+    createdAt: Date.now(),
+    parentID,
+    agentType,
+  })
+  saveThreads(threads)
+
+  // Parts stored in memory (not localStorage) to avoid quota limits
+  subAgentDataCache.set(id, { agentType, task, parts })
+
+  notifySubAgentChange()
+  return id
+}
+
+export function updateSubAgentParts(threadId: string, parts: unknown[]) {
+  const existing = subAgentDataCache.get(threadId)
+  if (!existing) return
+  existing.parts = parts
+  notifySubAgentChange()
+}
+
+export function getSubAgentData(threadId: string): StoredSubAgentData | null {
+  return subAgentDataCache.get(threadId) ?? null
+}
+
+export function isSubAgentThread(threadId: string): boolean {
+  return threadId.startsWith('sa-')
+}
+
+export function getChildThreads(parentID: string): StoredThread[] {
+  return loadThreads()
+    .filter((t) => t.parentID === parentID)
+    .sort((a, b) => b.createdAt - a.createdAt)
 }
 
 // ─── Thread List Adapter ──────────────────────────────────────────
@@ -67,6 +146,7 @@ export const threadListAdapter: RemoteThreadListAdapter = {
     const threads = loadThreads()
     return {
       threads: threads
+        .filter((t) => !isSubAgentThread(t.id))
         .sort((a, b) => b.createdAt - a.createdAt)
         .map((t) => ({
           remoteId: t.id,
@@ -147,37 +227,4 @@ export const threadListAdapter: RemoteThreadListAdapter = {
     })
     return stream as never
   },
-}
-
-// ─── Thread History Adapter ───────────────────────────────────────
-
-export function createHistoryAdapter(
-  getRemoteId: () => string | undefined,
-): ThreadHistoryAdapter {
-  return {
-    async load() {
-      const remoteId = getRemoteId()
-      if (!remoteId) return { messages: [] }
-      const msgs = loadMessages(remoteId)
-      return {
-        messages: msgs.map((m) => ({
-          message: m,
-          parentId: null as string | null,
-        })),
-      }
-    },
-    async append({ message, parentId }) {
-      void parentId
-      const remoteId = getRemoteId()
-      if (!remoteId) return
-      const messages = loadMessages(remoteId)
-      const existingIdx = messages.findIndex((m) => m.id === message.id)
-      if (existingIdx >= 0) {
-        messages[existingIdx] = message
-      } else {
-        messages.push(message)
-      }
-      saveMessages(remoteId, messages)
-    },
-  }
 }

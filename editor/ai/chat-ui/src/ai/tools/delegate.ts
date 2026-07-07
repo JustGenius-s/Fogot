@@ -2,18 +2,22 @@
  * Sub-agent delegation tool.
  *
  * Wraps a child ToolLoopAgent as a standard tool so the parent agent
- * can autonomously decide to delegate work.
+ * can autonomously decide to delegate work. Also creates a persisted
+ * child thread in localStorage so the user can open a full-page
+ * transcript in the thread list.
  */
 
 import { tool, ToolLoopAgent, stepCountIs, readUIMessageStream } from 'ai'
 import type { LanguageModel, ToolSet } from 'ai'
 import { z } from 'zod'
 import { getSubAgent } from '../agents'
+import { createSubAgentThread } from '@/lib/thread-storage'
 
 // ─── Injected dependencies ────────────────────────────────────────
 
 let _model: LanguageModel | null = null
 let _getTools: (allowed?: string[]) => ToolSet = () => ({})
+let _getParentThreadId: () => string = () => ''
 
 export function configureDelegateTool(
   model: LanguageModel,
@@ -22,6 +26,16 @@ export function configureDelegateTool(
   _model = model
   _getTools = getTools
 }
+
+export function configureParentThreadIdProvider(fn: () => string) {
+  _getParentThreadId = fn
+}
+
+/**
+ * After delegate_task completes, maps `task` string → child thread ID
+ * so DelegateTaskToolUI can find the child thread.
+ */
+export const childThreadMap = new Map<string, string>()
 
 export const delegateTask = tool({
   description: [
@@ -56,6 +70,13 @@ export const delegateTask = tool({
     if (!agentDef.allowNesting) {
       delete tools['delegate_task']
     }
+
+    const agentKey = agent_type ?? 'explore'
+    const parentID = _getParentThreadId()
+
+    // Create child thread entry early (empty parts, updated after execution)
+    const childId = createSubAgentThread(parentID, agentKey, task, [])
+    childThreadMap.set(task, childId)
 
     const subAgent = new ToolLoopAgent({
       model: _model,

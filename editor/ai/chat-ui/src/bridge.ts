@@ -669,7 +669,7 @@ export function getAgentId(): string {
 
 // ─── Top-Level View Store ─────────────────────────────────────────
 
-export type AppView = 'chat' | 'assets' | 'design' | 'audio' | 'settings'
+export type AppView = 'chat' | 'assets' | 'design' | 'audio' | 'settings' | 'subagent'
 
 let appView: AppView = 'chat'
 const viewListeners = new Set<() => void>()
@@ -691,6 +691,31 @@ export function getAppView(): AppView {
 export function setAppView(view: AppView) {
   appView = view
   viewListeners.forEach((fn) => fn())
+}
+
+// ─── Active Sub-Agent Thread Store ────────────────────────────────
+
+let activeSubAgentThreadId: string | null = null
+const subAgentListeners = new Set<() => void>()
+
+export function useActiveSubAgentThreadId(): string | null {
+  return useSyncExternalStore(
+    (listener) => {
+      subAgentListeners.add(listener)
+      return () => subAgentListeners.delete(listener)
+    },
+    () => activeSubAgentThreadId,
+  )
+}
+
+export function openSubAgentThread(threadId: string) {
+  activeSubAgentThreadId = threadId
+  subAgentListeners.forEach((fn) => fn())
+}
+
+export function closeSubAgentThread() {
+  activeSubAgentThreadId = null
+  subAgentListeners.forEach((fn) => fn())
 }
 
 // ─── Pending Prompt Store (cross-view message handoff) ────────────

@@ -64,6 +64,8 @@ export {
 export {
   delegateTask,
   configureDelegateTool,
+  configureParentThreadIdProvider,
+  childThreadMap,
 } from './tools/delegate'
 
 export {

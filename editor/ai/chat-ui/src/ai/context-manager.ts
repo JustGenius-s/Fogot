@@ -54,6 +54,10 @@ export function setCurrentThreadId(threadId: string | null) {
   emitUsage()
 }
 
+export function getCurrentThreadId(): string | null {
+  return currentThreadId
+}
+
 export function updateUsageSnapshot(usage: UsageSnapshot | null) {
   if (usage && (usage.inputTokens > 0 || usage.outputTokens > 0 || usage.totalTokens > 0)) {
     lastUsage = usage

@@ -3,6 +3,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { useRunningThreadsStore } from "@/lib/running-threads";
 import {
+  getChildThreads,
+  getSubAgentVersion,
+  subscribeSubAgentChanges,
+  type StoredThread,
+} from "@/lib/thread-storage";
+import { openSubAgentThread } from "@/bridge";
+import {
   AuiIf,
   ThreadListItemMorePrimitive,
   ThreadListItemPrimitive,
@@ -11,10 +18,12 @@ import {
 } from "@assistant-ui/react";
 import {
   ArchiveIcon,
+  ChevronRightIcon,
   MoreHorizontalIcon,
   TrashIcon,
 } from "lucide-react";
-import { type FC } from "react";
+import { type FC, useState, useMemo, useSyncExternalStore } from "react";
+import { cn } from "@/lib/utils";
 
 export const ThreadList: FC = () => {
   return (
@@ -31,8 +40,6 @@ export const ThreadList: FC = () => {
     </ThreadListPrimitive.Root>
   );
 };
-
-
 
 const ThreadListSkeleton: FC = () => {
   return (
@@ -52,30 +59,88 @@ const ThreadListSkeleton: FC = () => {
 };
 
 const ThreadListItem: FC = () => {
+  const threadId = useAuiState((s) => s.threadListItem?.remoteId ?? '')
+  const [showChildren, setShowChildren] = useState(false)
+
+  // Re-compute children when sub-agent threads are created/updated
+  const subAgentVersion = useSyncExternalStore(
+    subscribeSubAgentChanges,
+    getSubAgentVersion,
+  )
+
+  const children = useMemo(() => {
+    if (!threadId) return []
+    return getChildThreads(threadId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [threadId, subAgentVersion])
+
+  const hasChildren = children.length > 0
+
   return (
-    <ThreadListItemPrimitive.Root className="aui-thread-list-item group flex h-9 items-center gap-2 rounded-lg transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none data-active:bg-muted">
-      <ThreadListSpinner />
-      <ThreadListItemPrimitive.Trigger className="aui-thread-list-item-trigger flex h-full min-w-0 flex-1 items-center px-3 text-start text-sm">
-        <span className="aui-thread-list-item-title min-w-0 flex-1 truncate">
-          <ThreadListItemPrimitive.Title fallback="New Chat" />
-        </span>
-      </ThreadListItemPrimitive.Trigger>
-      <ThreadListItemMore />
-    </ThreadListItemPrimitive.Root>
+    <>
+      <ThreadListItemPrimitive.Root className="aui-thread-list-item group flex h-9 items-center gap-2 rounded-lg transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none data-active:bg-muted">
+        {hasChildren && (
+          <button
+            type="button"
+            className="shrink-0 flex items-center justify-center size-5 rounded hover:bg-muted-foreground/10 ml-0.5"
+            onClick={(e) => {
+              e.stopPropagation()
+              setShowChildren(!showChildren)
+            }}
+            aria-label={showChildren ? "Hide sub-agents" : "Show sub-agents"}
+          >
+            <ChevronRightIcon
+              className={cn("size-3.5 text-muted-foreground/60 transition-transform", showChildren && "rotate-90")}
+            />
+          </button>
+        )}
+        <ThreadListSpinner />
+        <ThreadListItemPrimitive.Trigger className="aui-thread-list-item-trigger flex h-full min-w-0 flex-1 items-center px-2 text-start text-sm">
+          <span className="aui-thread-list-item-title min-w-0 flex-1 truncate">
+            <ThreadListItemPrimitive.Title fallback="New Chat" />
+          </span>
+        </ThreadListItemPrimitive.Trigger>
+        <ThreadListItemMore />
+      </ThreadListItemPrimitive.Root>
+
+      {/* Child sub-agent threads indented under parent */}
+      {showChildren && children.map((child) => (
+        <ChildThreadRow key={child.id} child={child} />
+      ))}
+    </>
   );
 };
 
-/**
- * Fogot-specific working indicator shown on a thread row while its assistant
- * run is actively streaming.
- *
- * - **Main thread**: checked directly via `s.threads.main?.isRunning`
- *   (available at the list level where `s.thread` isn't).
- * - **Background threads**: read from the zustand store, which is set by
- *   {@link TrackRunningThreads} on every main-thread state pulse and
- *   intentionally never cleared for non-main threads so the spinner
- *   survives a tab switch.
- */
+function ChildThreadRow({ child }: { child: StoredThread }) {
+  const dotColor =
+    child.agentType === 'coder'
+      ? 'oklch(0.78 0.15 50)'
+      : child.agentType === 'explore'
+        ? 'oklch(0.78 0.13 200)'
+        : 'var(--primary)'
+
+  return (
+    <div
+      className="group flex h-9 items-center gap-2 rounded-lg transition-colors hover:bg-muted cursor-pointer pl-5"
+      onClick={() => openSubAgentThread(child.id)}
+    >
+      <span className="w-5 shrink-0" />
+      <span className="shrink-0 flex size-4 items-center justify-center ml-0.5">
+        <span
+          className="size-1.5 shrink-0 rounded-full"
+          style={{ background: dotColor }}
+          aria-hidden
+        />
+      </span>
+      <span className="flex h-full min-w-0 flex-1 items-center px-2 text-start text-sm">
+        <span className="min-w-0 flex-1 truncate text-muted-foreground">
+          {child.title || 'Sub-Agent'}
+        </span>
+      </span>
+    </div>
+  )
+}
+
 const ThreadListSpinner: FC = () => {
   const threadId  = useAuiState((s) => s.threadListItem?.id ?? '')
   const mainId    = useAuiState((s) => s.threads.mainThreadId)
@@ -103,16 +168,6 @@ const SpinnerCell: FC = () => (
   </span>
 )
 
-/**
- * Keeps the per-thread `isRunning` zustand store in sync.
- *
- * The only reliable signal in the v0.14 public API is the main thread's
- * `s.threads.main?.isRunning` — that is what `useAuiState` subscribes to
- * here.  For non-main threads we intentionally **never** clear the flag so
- * that a row that was running before the user switched away retains its
- * spinner.  The flag is corrected the instant the user switches back to
- * that thread.
- */
 const TrackRunningThreads: FC = () => {
   const set = useRunningThreadsStore((s) => s.set)
   useAuiState((s) => {

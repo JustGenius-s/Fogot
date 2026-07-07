@@ -12,21 +12,23 @@ import { ensureCatalog } from '@/lib/models-catalog'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Thread } from '@/components/assistant-ui/thread'
 import { ModelSettings, SettingsView } from '@/components/assistant-ui/model-settings'
-import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getAttachments, clearAttachments, setActivePlan, useAppView, getAvailableSkills } from '@/bridge'
+import { useConfig, useAgentId, useSelectedChatModelId, getSelectedChatModel, getAttachments, clearAttachments, setActivePlan, useAppView, useActiveSubAgentThreadId, getAvailableSkills } from '@/bridge'
 import { AssetMode } from '@/components/assets/asset-mode'
 import { DesignMode } from '@/components/assets/design-mode'
 import { AudioMode } from '@/components/assets/audio-mode'
+import { SubAgentThreadView } from '@/components/assistant-ui/subagent-thread'
 import { allTools, getToolsForAgent } from '@/ai/tools'
 import { resolveCapabilities, resolveModelLimits, VISION_REQUIRED_TOOLS } from '@/lib/model-capabilities'
 import { getDefaultSystemPrompt, getPlanSystemPrompt, getDesignSystemPrompt, getAgent } from '@/ai/agents'
 import { loadDesignBible, describeBibleForPrompt, bibleHasContent, type DesignBible } from '@/lib/design-bible'
 import { loadProjectKinds } from '@/lib/kinds-loader'
 import { createImageChatTransport } from '@/ai/image-transport'
-import { configureDelegateTool } from '@/ai/tools'
+import { configureDelegateTool, configureParentThreadIdProvider } from '@/ai/tools'
 import {
   updateUsageSnapshot,
   getLastUsage,
   setCurrentThreadId,
+  getCurrentThreadId,
 } from '@/ai/context-manager'
 import { compactIfNeeded } from '@/ai/compaction'
 import type { ModelConfig } from '@/bridge'
@@ -323,6 +325,12 @@ const ChatProvider: FC<{
 
 const MainView: FC = () => {
   const view = useAppView()
+  const subAgentThreadId = useActiveSubAgentThreadId()
+
+  if (view === 'subagent' || subAgentThreadId) {
+    const id = subAgentThreadId ?? ''
+    if (id) return <SubAgentThreadView threadId={id} />
+  }
 
   if (view === 'assets') {
     return <AssetMode />
@@ -412,6 +420,7 @@ export default function App() {
       extraBody,
     })
     configureDelegateTool(model, getToolsForAgent)
+    configureParentThreadIdProvider(() => getCurrentThreadId() ?? '')
 
     const agentConfig = (agentId && agentId !== DEFAULT_MODE_ID) ? getAgent(agentId) : undefined
 

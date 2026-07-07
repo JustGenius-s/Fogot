@@ -43,7 +43,7 @@ function Mark({ picked, letter }: { multi?: boolean; picked: boolean; letter?: s
   return (
     <span
       className={cn(
-        'size-[18px] mt-[1px] shrink-0 rounded-[4px] border flex items-center justify-center transition-colors text-[11px] font-semibold leading-none',
+        'size-[18px] mt-px shrink-0 rounded-[4px] border flex items-center justify-center transition-colors text-[11px] font-semibold leading-none',
         picked
           ? 'bg-primary border-primary text-primary-foreground'
           : 'border-border text-muted-foreground group-hover:border-border/80',
