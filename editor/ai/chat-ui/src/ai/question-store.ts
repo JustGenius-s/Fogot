@@ -22,6 +22,7 @@ interface PendingEntry {
 }
 
 let pending: PendingEntry | null = null
+let lastSubmitted: string[][] | null = null
 const listeners = new Set<() => void>()
 
 function emit() {
@@ -32,6 +33,7 @@ function emit() {
 export function enqueueQuestions(questions: QuestionItem[]): Promise<string[][]> {
   return new Promise((resolve, reject) => {
     pending = { resolve, reject, questions }
+    lastSubmitted = null
     emit()
   })
 }
@@ -45,9 +47,14 @@ export function subscribe(fn: () => void): () => void {
   return () => listeners.delete(fn)
 }
 
+export function getLastSubmitted(): string[][] | null {
+  return lastSubmitted
+}
+
 export function submitAnswers(answers: string[][]): void {
   const entry = pending
   pending = null
+  lastSubmitted = answers
   if (entry) {
     entry.resolve(answers)
     emit()

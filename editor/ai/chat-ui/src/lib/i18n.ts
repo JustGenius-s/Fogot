@@ -450,6 +450,21 @@ const messages = {
     zh: '开启某个模型作为默认；关闭则改为每次生成时询问。',
   },
   'imgModel.noModels': { en: 'No image models configured', zh: '未配置图像模型' },
+
+  // ── Question dock (ask_user) ──
+  'common.submit': { en: 'Submit', zh: '提交' },
+  'common.dismiss': { en: 'Dismiss', zh: '忽略' },
+  'question.title': { en: 'Question {current} of {total}', zh: '问题 {current} / {total}' },
+  'question.singleTitle': { en: 'Question', zh: '提问' },
+  'question.pickOne': { en: 'Pick one', zh: '单选' },
+  'question.chooseAny': { en: 'Choose any', zh: '可多选' },
+  'question.typeOwn': { en: 'Type your own answer', zh: '输入自定义回答' },
+  'question.typeOwnPlaceholder': { en: 'Type your own answer…', zh: '输入自定义回答…' },
+  'question.answered': { en: 'Answered', zh: '已回答' },
+  'question.unanswered': { en: 'Not answered', zh: '未回答' },
+  'question.dismissed': { en: 'Question dismissed', zh: '提问已忽略' },
+  'question.askedOne': { en: 'Asked 1 question', zh: '已提问 1 个问题' },
+  'question.askedMany': { en: 'Asked {count} questions', zh: '已提问 {count} 个问题' },
 } satisfies Record<string, Entry>
 
 export type MessageKey = keyof typeof messages

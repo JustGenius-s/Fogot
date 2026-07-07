@@ -32,6 +32,8 @@ import { ToolFallback } from "@/components/assistant-ui/tool-fallback";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { ThreadList } from "@/components/assistant-ui/thread-list";
 import { ContextDisplayRing } from "@/components/assistant-ui/context-display";
+import { QuestionDock } from "@/components/custom/question-dock";
+import { TodoDock } from "@/components/custom/todo-dock";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -163,8 +165,10 @@ export const Thread: FC = () => {
               </ThreadPrimitive.Messages>
             </div>
 
-            <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mt-auto flex flex-col gap-4 overflow-visible rounded-t-(--composer-radius) bg-background pb-4 md:pb-6">
+            <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mt-auto flex flex-col gap-0 overflow-visible rounded-t-(--composer-radius) bg-background pb-4 md:pb-6">
               <ThreadScrollToBottom />
+              <TodoDock />
+              <QuestionDock />
               <Composer />
             </ThreadPrimitive.ViewportFooter>
           </div>

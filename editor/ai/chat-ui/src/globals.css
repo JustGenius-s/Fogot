@@ -187,3 +187,19 @@
   background: oklch(0.65 0.12 230);
   animation: orbit 1.2s linear infinite;
 }
+
+/* ─── Question dock collapse/expand animation ─────────────────── */
+/* Mirrors opencode's useSpring height+opacity transition. The body
+   wrapper stays in the DOM; we animate max-height + opacity + margin
+   so the dock slides shut smoothly instead of snapping away. */
+[data-component="question-dock"] [data-slot="question-collapser"] {
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.2s ease, margin 0.3s ease, border-width 0.3s ease;
+}
+[data-component="question-dock"][data-minimized="true"] [data-slot="question-collapser"] {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  border-top-width: 0;
+  pointer-events: none;
+}

@@ -4,7 +4,7 @@
  */
 
 import { useSyncExternalStore } from 'react'
-import { getSelectedChatModel } from '@/bridge'
+import { getSelectedChatModel, setActivePlan } from '@/bridge'
 import { resolveModelLimits } from '@/lib/model-capabilities'
 import { tokenCount, usableContext } from '@/ai/context-budget'
 
@@ -39,6 +39,7 @@ function persistUsage() {
 export function setCurrentThreadId(threadId: string | null) {
   if (threadId === currentThreadId) return
   currentThreadId = threadId
+  setActivePlan(null)
   if (threadId) {
     const raw = localStorage.getItem(USAGE_STORAGE_PREFIX + threadId)
     if (raw) {
