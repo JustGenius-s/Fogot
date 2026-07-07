@@ -8,6 +8,7 @@
 
 import { tool } from 'ai'
 import { z } from 'zod'
+import { parse as parseYaml } from 'yaml'
 import { bridgeRPC } from '@/bridge'
 import { DESIGN_DIR, parseDesign, syncDesignToResource } from '@/lib/designs'
 import { validateDesign } from '@/lib/design-schema'
@@ -15,6 +16,39 @@ import { loadDesignBible, validateAgainstBible, bibleHasContent } from '@/lib/de
 
 /** Old content before a design write, keyed by path (for inline diff/card). */
 export const designOldContentCache = new Map<string, string>()
+
+/**
+ * Strict frontmatter check — returns a human-readable error string when the
+ * content is not a valid design doc (missing frontmatter fence or unparseable
+ * YAML), or `null` when it parses cleanly. Used by write_design so the model
+ * gets an explicit error to self-correct instead of a silently empty meta.
+ */
+function checkDesignFormat(content: string): string | null {
+  const trimmed = content.trim()
+  if (!trimmed.startsWith('---')) {
+    return '文件必须以 YAML frontmatter 块开头（第一行应为 `---`），当前内容没有 frontmatter。'
+  }
+  const m = trimmed.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/)
+  if (!m) {
+    return 'frontmatter 块不完整——缺少结束的 `---` 行。正确格式：`---\\n<yaml>\\n---\\n<markdown 正文>`。'
+  }
+  try {
+    const parsed = parseYaml(m[1])
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return 'frontmatter 必须是一个 YAML mapping（键值对），当前解析结果不是对象。'
+    }
+    const meta = parsed as Record<string, unknown>
+    if (!meta.name || (typeof meta.name === 'string' && !meta.name.trim())) {
+      return 'frontmatter 缺少必填字段 `name`。'
+    }
+    if (!meta.type || (typeof meta.type === 'string' && !meta.type.trim())) {
+      return 'frontmatter 缺少必填字段 `type`（如 character/item/skill/enemy/level 或项目自定义 kind）。'
+    }
+  } catch (e) {
+    return `YAML 解析失败：${e instanceof Error ? e.message : String(e)}。请检查缩进（用空格不用 tab）、引号、数组/嵌套语法。`
+  }
+  return null
+}
 
 /** Normalize a user/LLM-supplied slug into a `res://.design/<slug>.md` path. */
 export function designPathForSlug(slug: string): string {
@@ -45,6 +79,15 @@ export const writeDesign = tool({
   }),
   execute: async ({ slug, content }) => {
     const path = designPathForSlug(slug)
+
+    // Strict format check BEFORE writing — refuse to persist malformed docs
+    // so the gallery never shows a broken entry. Returns an explicit error the
+    // model can act on (missing frontmatter, bad YAML, missing name/type).
+    const formatError = checkDesignFormat(content)
+    if (formatError) {
+      return JSON.stringify({ success: false, path, error: formatError })
+    }
+
     try {
       const old = await bridgeRPC('read_file', { path })
       designOldContentCache.set(path, old)

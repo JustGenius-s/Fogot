@@ -456,6 +456,7 @@ export function getDesignSystemPrompt(bibleSummary?: string): string {
     '# 规则',
     '- 设计稿一律通过 write_design 保存（它只写入 res://.design/ 目录）。',
     '- 编辑已有设计稿前必须先 read_file 读取。',
+    '- write_design 会先校验 frontmatter 格式：缺 `---` 围栏、YAML 解析失败、缺 name/type 都会拒绝落盘并返回 error——收到 error 请修正后重试，不要忽略。',
     '- 不要手写 GDScript 或场景文件——结构化数据通过 sync_design 自动生成；设计模式专注于设计文档与音频/图像资源。',
     '- 完成后简要告诉用户你创建/更新了哪个设计稿，以及它的核心设定、配图与音频；若已落成 .tres 也一并说明。',
     '',
