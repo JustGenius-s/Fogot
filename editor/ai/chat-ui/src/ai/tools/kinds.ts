@@ -143,9 +143,8 @@ export const writeKind = tool({
 
 export const listKinds = tool({
   description: [
-    'List the currently active design-entity kinds (built-in + project overlay).',
-    'Use this when the user asks which types exist, or before authoring a design',
-    'whose type might have been added at runtime.',
+    'List the currently active design-entity kinds (built-in + project overlay), including field schemas.',
+    'Call before authoring a design when unsure which types/fields exist, or after write_kind.',
   ].join('\n'),
   inputSchema: z.object({}),
   execute: async () => {

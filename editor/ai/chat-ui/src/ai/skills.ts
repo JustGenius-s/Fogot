@@ -116,6 +116,6 @@ export function formatSkillListing(skills: { id: string; description: string }[]
   if (skills.length === 0) return ''
   const list = skills.map((s) => `- ${s.id}: ${s.description}`).join('\n')
   return lang === 'zh'
-    ? `# 可用技能\n\n当任务需要专业领域知识时，使用 use_skill 工具加载技能指南。\n\n${list}`
-    : `# Available Skills\n\nUse the use_skill tool to load a skill's full guide when needed.\n\n${list}`
+    ? `可用技能（用 use_skill 加载）：\n${list}`
+    : `Available skills (load with use_skill):\n${list}`
 }

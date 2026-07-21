@@ -1,15 +1,12 @@
 /**
  * Agent definitions & modular prompt system.
  *
- * Prompts are authored as plain Markdown files under `src/ai/prompts/` and
- * imported via Vite's `?raw` suffix (zero escaping, easy to edit). Dynamic
- * bits use `{{PLACEHOLDER}}` tokens replaced at assembly time. This mirrors
- * how opencode organizes its prompts (external text files + runtime assembly).
+ * Modes expose a short identity line; behavior is constrained by the tool
+ * allowlist and each tool's description/schema. Dynamic inventory (skills,
+ * optional design Bible summary) may still be appended at assembly time.
  */
 
-import { getAvailableSkills } from '@/bridge'
 import { formatSkillListing } from './skills'
-import { describeSchemaForPrompt } from '@/lib/design-schema'
 
 import defaultPromptRaw from './prompts/default.md?raw'
 import subagentExploreRaw from './prompts/subagent-explore.md?raw'
@@ -36,17 +33,6 @@ export interface AgentConfig {
 const EXPLORE_WHEN_TO_USE = 'Explore and search project files (read-only, fast, thorough)'
 const CODER_WHEN_TO_USE = 'Implement code changes across multiple files in the project'
 
-// ─── Prompt Assembly ──────────────────────────────────────────────
-
-/** Build the sub-agent listing block injected into the default prompt. */
-function buildDefaultSystemPrompt(): string {
-  const list = getSubAgents()
-    .filter((a) => a.canBeSubAgent)
-    .map((a) => `- ${a.id}: ${a.whenToUse}`)
-    .join('\n')
-  return defaultPromptRaw.replace('{{SUBAGENT_LIST}}', list)
-}
-
 // ─── Sub-Agent Definitions ────────────────────────────────────────
 
 function getSubAgents(): AgentConfig[] {
@@ -56,7 +42,7 @@ function getSubAgents(): AgentConfig[] {
       displayName: 'Explorer',
       canBeSubAgent: true,
       whenToUse: EXPLORE_WHEN_TO_USE,
-      systemPrompt: subagentExploreRaw,
+      systemPrompt: subagentExploreRaw.trim(),
       allowedTools: ['read_file', 'list_files', 'search_files', 'get_class_docs'],
       allowNesting: false,
       maxSteps: 15,
@@ -66,7 +52,7 @@ function getSubAgents(): AgentConfig[] {
       displayName: 'Coder',
       canBeSubAgent: true,
       whenToUse: CODER_WHEN_TO_USE,
-      systemPrompt: subagentCoderRaw,
+      systemPrompt: subagentCoderRaw.trim(),
       allowNesting: false,
       maxSteps: 20,
     },
@@ -83,9 +69,9 @@ export function getSubAgent(id: string): AgentConfig {
 
 // ─── System Prompts (public API) ──────────────────────────────────
 
-/** Main agent system prompt — call this to get the current language version */
+/** Main agent system prompt — mode line + optional skill inventory */
 export function getDefaultSystemPrompt(skills?: { id: string; description: string }[]): string {
-  let prompt = buildDefaultSystemPrompt()
+  let prompt = defaultPromptRaw.trim()
   if (skills?.length) {
     prompt += '\n\n' + formatSkillListing(skills)
   }
@@ -93,25 +79,24 @@ export function getDefaultSystemPrompt(skills?: { id: string; description: strin
 }
 
 /** Legacy export for backwards compatibility */
-export const defaultSystemPrompt = buildDefaultSystemPrompt()
+export const defaultSystemPrompt = getDefaultSystemPrompt()
 
 export function getPlanSystemPrompt(): string {
-  return planPromptRaw
+  return planPromptRaw.trim()
 }
 
 /** Legacy export for backwards compatibility */
 export const planSystemPrompt = getPlanSystemPrompt()
 
-// ─── Design Mode ──────────────────────────────────────────────────
-
 /**
- * Design mode system prompt. Body lives in `prompts/design.md` (plain Markdown, no escaping).
- * Two placeholders: {{BIBLE_SUMMARY}} (bible summary, empty if none) and {{SCHEMA}} (kind schema).
+ * Design mode system prompt. Optional Bible summary is project data, not rules.
  */
 export function getDesignSystemPrompt(bibleSummary?: string): string {
-  return designPromptRaw
-    .replace('{{BIBLE_SUMMARY}}', bibleSummary ?? '(No design Bible in this project yet)')
-    .replace('{{SCHEMA}}', describeSchemaForPrompt())
+  let prompt = designPromptRaw.trim()
+  if (bibleSummary?.trim()) {
+    prompt += `\n\nDesign Bible (follow when authoring):\n${bibleSummary.trim()}`
+  }
+  return prompt
 }
 
 // ─── Top-Level Mode Agents ────────────────────────────────────────

@@ -112,12 +112,12 @@ editor/ai/
 
 ### Agent 与模式
 
-主 Agent 通过 Markdown 提示词装配，并按需切换为不同模式 / 子 Agent：
+主 Agent 按模式切换短身份声明 + 工具白名单（行为约束写在 tool description）：
 
 | Agent / 模式 | 职责 |
 |------|------|
-| **主 Agent** | 通用对话与工具调度，注入可用技能与子 Agent 列表 |
-| **计划模式** (`plan`) | 先制定执行计划再落地，`exit_plan_mode` / `update_plan` |
+| **主 Agent** | 通用对话与工具调度，可选注入技能列表 |
+| **计划模式** (`plan`) | 只读探索并产出计划，`exit_plan_mode` / `ask_user` |
 | **设计模式** (`design`) | 编写 / 同步设计文档与 Bible，生成 Kinds |
 | **Explorer 子 Agent** | 只读、快速、彻底地搜索与浏览项目文件 |
 | **Coder 子 Agent** | 跨多文件实施代码改动 |

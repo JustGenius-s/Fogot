@@ -65,13 +65,16 @@ export function designPathForSlug(slug: string): string {
 
 export const writeDesign = tool({
   description: [
-    'Create or overwrite a design document under res://.design/.',
-    'A design doc is a Markdown file whose header is a YAML frontmatter block',
-    '(name and type are required) followed by Markdown prose.',
+    'Create or overwrite a design document under res://.design/<slug>.md.',
+    'Format: YAML frontmatter (name + type required) then Markdown prose.',
     'Rules:',
     '- Use this tool (not write_file) for design documents.',
-    '- To revise an existing design, read_file it first, then call write_design with the full updated content.',
-    '- The slug must be a lowercase english kebab-case name without extension (e.g. "hero-knight").',
+    '- Slug: lowercase english kebab-case, no extension (e.g. "hero-knight").',
+    '- Revise: read_file the existing doc first, then write_design the full updated content.',
+    '- Before authoring: list_kinds for the type schema; optionally list_files res://.design/ for same-type examples.',
+    '- Follow the project Design Bible at res://.design/_template.md when it exists.',
+    '- On success, fix any returned issues with severity=error before finishing; address warnings or explain exceptions.',
+    '- After voice/image generation for a design, write paths/ids back via write_design (portrait, voice_id, etc.).',
   ].join('\n'),
   inputSchema: z.object({
     slug: z.string().describe('Lowercase kebab-case file name without extension, e.g. "hero-knight"'),
@@ -130,7 +133,8 @@ export const syncDesign = tool({
     'Export a finished design doc into a typed Godot Resource (.tres) the game can load() at runtime.',
     'Reads res://.design/<slug>.md, (re)generates the per-kind Resource script under res://design/schema/,',
     'and saves res://design/data/<slug>.tres with the design\'s structured fields.',
-    'Call this after the design (and any referenced designs) are finalized.',
+    'Call after the design (and any referenced designs) are finalized; re-run after edits to keep .tres in sync.',
+    'To sync a design into the open scene, use scene_* tools (undoable) — do not hand-edit .tscn files.',
   ].join('\n'),
   inputSchema: z.object({
     slug: z.string().describe('Design slug (file name without extension), e.g. "hero-knight"'),

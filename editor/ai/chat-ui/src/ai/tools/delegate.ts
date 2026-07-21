@@ -39,16 +39,14 @@ export const childThreadMap = new Map<string, string>()
 
 export const delegateTask = tool({
   description: [
-    'Delegate a task to a specialized sub-agent that runs independently.',
-    'The sub-agent has its own context window and tools.',
-    'Available agent types:',
-    '  - "explore": Explore and search files in the project (read-only, fast, thorough)',
-    '  - "coder": Implement code changes across multiple files in the project',
-    '',
+    'Delegate a task to a specialized sub-agent with its own context and tools.',
+    'Agents:',
+    '  - "explore": read-only search/analysis across the project',
+    '  - "coder": implement code changes across files',
     'Guidelines:',
-    '- Always provide a detailed, self-contained task description — sub-agents cannot see your conversation.',
-    '- Brief the sub-agent like a smart colleague: explain what, why, and what you already know.',
-    '- Include relevant file paths and context.',
+    '- Task must be self-contained — sub-agents cannot see this conversation.',
+    '- Include paths, known context, and the exact outcome you need.',
+    '- Prefer explore for broad discovery; coder for multi-file edits.',
   ].join('\n'),
   inputSchema: z.object({
     task: z.string().describe(

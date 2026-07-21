@@ -23,19 +23,17 @@ const questionSchema = z.object({
 })
 
 export const askUser = tool({
-  description:
-    'Use this tool when you need to ask the user questions during execution. ' +
-    'This allows you to: ' +
-    '1. Gather user preferences or requirements ' +
-    '2. Clarify ambiguous instructions ' +
-    '3. Get decisions on implementation choices as you work ' +
-    '4. Offer choices to the user about what direction to take.\n\n' +
-    'Usage notes:\n' +
-    '- When `custom` is enabled (default), a "Type your own answer" option is added automatically; don\'t include "Other" or catch-all options\n' +
-    '- Answers are returned as arrays of labels; set `multiple: true` to allow selecting more than one\n' +
-    '- If you recommend a specific option, make that the first option in the list and add "(Recommended)" at the end of the label',
+  description: [
+    'Ask the user clarifying questions when intent is ambiguous or a decision is needed.',
+    'Usage:',
+    '- Ask 1–3 questions at a time; each with 2–4 short options (1–5 words).',
+    '- Put the recommended option first and suffix its label with "(Recommended)".',
+    '- Do not include an "Other" option — a custom answer field is added automatically.',
+    '- After answers return, continue; do not re-ask what is already clear.',
+    '- In plan mode, a turn may end with ask_user instead of exit_plan_mode when clarification is required.',
+  ].join('\n'),
   inputSchema: z.object({
-    questions: z.array(questionSchema).min(1).describe('Questions to ask'),
+    questions: z.array(questionSchema).min(1).max(3).describe('1–3 questions to ask'),
   }),
   execute: async ({ questions }) => {
     const answers = await enqueueQuestions(questions)

@@ -7,15 +7,16 @@ import { z } from 'zod'
 import { getActivePlan, updatePlanStep } from '@/bridge'
 
 export const exitPlanMode = tool({
-  description:
-    'Signal that the plan is complete and ready for user approval. ' +
-    'You MUST call this tool after composing your plan. ' +
-    'Pass the full plan markdown content — it will be displayed in a plan card for user review. ' +
-    'Do NOT write the full plan in your reply text; keep your reply concise.',
+  description: [
+    'Finish plan mode: hand the plan to the user for approval.',
+    'In plan mode, end every turn with either this tool or ask_user — no exceptions.',
+    'Put the full plan in plan_content (Markdown). Keep reply text to a 1–2 sentence summary.',
+    'plan_content should cover: recommended approach, critical file paths, implementation steps, and how to verify.',
+  ].join('\n'),
   inputSchema: z.object({
     plan_summary: z.string().describe('Brief one-line summary of the plan (shown in the card header)'),
     plan_content: z.string().describe(
-      'The full plan markdown content. Include all sections: background, design decisions, file paths, implementation steps, verification.',
+      'Full plan Markdown for the plan card. Include approach, critical paths, steps, and verification.',
     ),
     steps: z.array(
       z.string().describe('Step title (concise, actionable)'),
@@ -27,7 +28,11 @@ export const exitPlanMode = tool({
 })
 
 export const updatePlan = tool({
-  description: 'Update the progress of the active plan. Call this after completing or starting each step.',
+  description: [
+    'Update progress on the active plan while executing it.',
+    'Call update_plan(step_index, "in_progress") when starting a step,',
+    '"done" when finished, or "skipped" if the step is not needed.',
+  ].join(' '),
   inputSchema: z.object({
     step_index: z.number().describe('Zero-based index of the step to update'),
     status: z.enum(['in_progress', 'done', 'skipped']).describe('New status for the step'),
